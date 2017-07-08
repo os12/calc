@@ -3,3 +3,8 @@ BasedOnStyle: Google
 Standard: Cpp11
 ColumnLimit: 90
 IndentWidth: 4
+DerivePointerAlignment : false
+PointerAlignment: Left
+BinPackArguments: false
+BinPackParameters: false
+

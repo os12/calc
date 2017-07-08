@@ -8,59 +8,76 @@
 #include "utils.h"
 
 namespace {
-  void Parse(std::string input, nana::widget &output) {
-    
-      auto result = parser::Compute(input);
-      output.caption(std::to_string(result.r32));
-#if 0
-      ui->dec32s->setText(QString::number(int32_t(result.r32)));
-      ui->dec32u->setText(QString::number(result.r32));
 
-      char hex[64];
-      sprintf(hex, "%08x", result.r32);
-      ui->hex32->setText(hex);
-      sprintf(hex, "%016I64x", result.r64);
-      ui->hex64->setText(hex);
+template <typename T>
+void Parse(std::string input, T& out_controls) {
+    auto result = parser::Compute(input);
 
-      ui->dec64s->setText(QString::number(int64_t(result.r64)));
-      ui->dec64u->setText(QString::number(result.r64));
+    auto get_control = [&out_controls](const char* name) -> OutControl& {
+        return out_controls.find(name)->second;
+    };
 
-      QString real;
-      real.sprintf("%.3f", result.rreal);
-      ui->real->setText(real);
+    get_control("dec32").control->caption(std::to_string(result.r32));
 
-      cBigString buf;
-      ui->big->setText(result.rbig.toa(buf));
-      statusBar()->showMessage("");
-#endif    
-  }
+    char hex[64];
+    sprintf_s(hex, sizeof(hex), "%08X", result.r32);
+    get_control("hex32").control->caption(hex);
+
+    cBigString buf;
+    get_control("big").control->caption(result.rbig.toa(buf));
 }
 
+}  // namespace
+
 using namespace base;
+
+struct OutControl {
+    OutControl() = default;
+    OutControl(const nana::form& owner,
+               const nana::paint::font& font,
+               const std::string& name)
+        : label(std::make_unique<nana::label>(owner, name)),
+          control(std::make_unique<nana::textbox>(owner)) {
+        control->bgcolor(nana::colors::light_gray);
+        control->typeface(font);
+        control->line_wrapped(true);
+        control->editable(false);
+    }
+
+    std::unique_ptr<nana::label> label;
+    std::unique_ptr<nana::textbox> control;
+};
 
 int __stdcall WinMain(
     _In_ HINSTANCE hInstance,
     _In_ HINSTANCE hPrevInstance,
     _In_ LPSTR     lpCmdLine,
     _In_ int       nCmdShow) {
-    using namespace nana;
 
     // Define a form object, class form will create a window
     // when a form instance is created.
     // The new window default visibility is false.
-    form fm;
+    nana::form fm;
 
-    label result{fm};
-    result.bgcolor(colors::azure);
+    nana::paint::font result_font("Verdana", 10);
+    std::map<std::string, OutControl> out_controls;
+    out_controls["dec32"] = OutControl(fm, result_font, "dec32");
+    out_controls["hex32"] = OutControl(fm, result_font, "hex32");
+    out_controls["big"] = OutControl(fm, result_font, "big");
 
-    label statusbar{fm};
+    auto get_control = [&out_controls](const char *name) -> OutControl & {
+        return out_controls.find(name)->second;
+    };
+    nana::label statusbar{fm};
     statusbar.format(true);
 
-    textbox input{fm};
-    input.events().text_changed([&result, &statusbar](const arg_textbox &arg) {
+    nana::textbox input{fm};
+    input.line_wrapped(true);
+    input.typeface(nana::paint::font("Verdana", 12));
+    input.events().text_changed([&out_controls, &statusbar](const nana::arg_textbox &arg) {
         try {
-            Parse(arg.widget.caption(), result);
-            statusbar.caption("");
+            Parse(arg.widget.caption(), out_controls);
+            statusbar.caption("OK");
         } catch (std::exception &e) {
             // ClearAll();
             OutputDebugLine(e.what());
@@ -70,15 +87,30 @@ int __stdcall WinMain(
     });
 
     // Define a layout object for the form.
-    place layout(fm);
+    nana::place layout(fm);
 
     // The div-text
-    layout.div("vert<input><<><result weight=80><>><status weight=20");
-    layout["result"] << result;
+    layout.div(
+        "vert<input>"
+        "<weight=20 <dec32label weight=60><dec32result>>"
+        "<weight=20 <hex32label weight=60><hex32result>>"
+        "<<biglabel weight=60><bigresult>>"
+        "<status weight=20>");
+    
     layout["input"] << input;
+
+    layout["dec32label"] << *get_control("dec32").label;
+    layout["dec32result"] << *get_control("dec32").control;
+
+    layout["hex32label"] << *get_control("hex32").label;
+    layout["hex32result"] << *get_control("hex32").control;
+
+    layout["biglabel"] << *get_control("big").label;
+    layout["bigresult"] << *get_control("big").control;
+
     layout["status"] << statusbar;
     layout.collocate();
 
     fm.show();
-    exec();
+    nana::exec();
 }

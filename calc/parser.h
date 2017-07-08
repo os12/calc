@@ -54,20 +54,20 @@ struct Token {
       : type_(t), value_(value), base_(base) {}
 
   Result ExtractInt() const {
-    Result r;
-    r.rbig = cBigNumber(value_.data(), base_);
-    size_t last;
-    r.r64 = stoull(value_, &last, base_);
-    assert(last == value_.size());
-    r.r32 = stol(value_, &last, base_);
-    assert(last == value_.size());
+      Result r;
+      r.rbig = cBigNumber(value_.data(), base_);
+      size_t last;
+      r.r64 = stoull(value_, &last, base_);
+      assert(last == value_.size());
+      r.r32 = stol(value_, &last, base_);
+      assert(last == value_.size());
 
-    // Deal with hex-->double conversion
-    if (base_ == 10)
-      r.rreal = stold(value_, &last);
-    else
-      r.rreal = r.r64;
-    return r;
+      // Deal with hex-->double conversion
+      if (base_ == 10)
+          r.rreal = stold(value_, &last);
+      else
+          r.rreal = static_cast<double>(r.r64);
+      return r;
   }
 
   Type type_;

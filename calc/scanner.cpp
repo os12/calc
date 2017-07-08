@@ -49,7 +49,7 @@ std::string ToString(Token::Type tt) {
 
 #undef CASE
 
-std::deque<Token> Scan(const std::string &inp) {
+std::deque<Token> Scan(const std::string& inp) {
     std::deque<Token> out;
 
     for (int pos = 0; pos < inp.size();) {
@@ -122,7 +122,7 @@ std::deque<Token> Scan(const std::string &inp) {
 
                 if (base == 10 && NumberContainsHexChars(number))
                     throw std::runtime_error(
-                        "Invalid input: hex chars in a base/10 number");
+                        "Invalid input: hex chars in a base/10 number: " + number);
 
                 // Done. We have a well-formed Int.
                 out.push_back(Token{Token::Type::Int, number, base});
