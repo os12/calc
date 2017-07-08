@@ -1,0 +1,3 @@
+[submodule "nana"]
+	path = nana
+	url = git@github.com:os12/nana.git
