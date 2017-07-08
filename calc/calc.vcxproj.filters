@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Code">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Code\big">
+      <UniqueIdentifier>{43443d78-97cd-40c9-a799-55103f1fbbe2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="big\Cbignum.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Cbignumf.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Cbignums.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Cbnl.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Cios.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Cthr.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Ctty.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Exarray.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Exdebug.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Exstring.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="big\Exthread.h">
+      <Filter>Code\big</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Code</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="min.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Cbignum.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Cbignumf.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Cbignums.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Ctty.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Exarray.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="big\Prime.cpp">
+      <Filter>Code\big</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="scanner.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="big\Cbignumf.inl">
+      <Filter>Code\big</Filter>
+    </None>
+    <None Include="big\Cbnl.inl">
+      <Filter>Code\big</Filter>
+    </None>
+    <None Include="big\Cbnl64.inl">
+      <Filter>Code\big</Filter>
+    </None>
+  </ItemGroup>
+</Project>

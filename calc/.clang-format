@@ -1,0 +1,5 @@
+# code format spec for clang-format
+BasedOnStyle: Google
+Standard: Cpp11
+ColumnLimit: 90
+IndentWidth: 4
