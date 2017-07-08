@@ -38,7 +38,7 @@ namespace {
 
 using namespace base;
 
-int WinMain(
+int __stdcall WinMain(
     _In_ HINSTANCE hInstance,
     _In_ HINSTANCE hPrevInstance,
     _In_ LPSTR     lpCmdLine,
