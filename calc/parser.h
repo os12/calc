@@ -14,7 +14,7 @@ struct Result {
     explicit Result(const std::string& number, int base = 10);
 
     std::optional<uint64_t> r64;
-    uint32_t r32;
+    std::optional<uint32_t> r32;
     std::optional<double> rreal;
     std::optional<cBigNumber> rbig;
 

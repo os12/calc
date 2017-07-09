@@ -21,13 +21,16 @@ void Parse(std::string input, T& out_controls) {
         return out_controls.find(name)->second;
     };
 
-    get_control("dec32").control->caption(std::to_string(result.r32));
+    if (result.r32) {
+        get_control("dec32").control->caption(std::to_string(*result.r32));
 
-    char buf[64];
-    sprintf_s(buf, sizeof(buf), "%08X", result.r32);
-    get_control("hex32").control->caption(buf);
+        char buf[64];
+        sprintf_s(buf, sizeof(buf), "%08X", *result.r32);
+        get_control("hex32").control->caption(buf);
+    }
 
     if (result.rreal) {
+        char buf[64];
         sprintf_s(buf, sizeof(buf), "%f", *result.rreal);
         get_control("real").control->caption(buf);
         sprintf_s(buf, sizeof(buf), "%e", *result.rreal);

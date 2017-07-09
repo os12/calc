@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "parser.h"
 
+#include <glog/logging.h>
+
 namespace parser {
 
 Result::Result(const std::string& number, int base) {
@@ -12,12 +14,12 @@ Result::Result(const std::string& number, int base) {
     size_t last;
     if (rbig && rbig.value().length() <= 1) {
         r64 = stoull(number, &last, base);
-        assert(last == number.size());
-        assert(rbig.value().toCBNL() == r64.value());
+        DCHECK_EQ(last, number.size());
+        DCHECK_EQ(rbig.value().toCBNL(), r64.value());
 
         if (*r64 <= std::numeric_limits<uint32_t>::max()) {
             r32 = static_cast<uint32_t>(*r64);
-            assert(*r64 == r32);
+            DCHECK_EQ(*r64, *r32);
         }
     }
 
@@ -29,102 +31,128 @@ Result::Result(const std::string& number, int base) {
     }
 }
 
-Result& Result::operator+=(Result b) {
-    r32 += b.r32;
-    if (r64 && b.r64)
-        *r64 += *b.r64;
-    if (rreal && b.rreal)
-        *rreal += *b.rreal;
-    if (rbig && b.rbig)
-        *rbig += *b.rbig;
+Result& Result::operator+=(Result other) {
+    if (r32 && other.r32)
+        *r32 += *other.r32;
+    if (r64 && other.r64)
+        *r64 += *other.r64;
+    if (rreal && other.rreal)
+        *rreal += *other.rreal;
+    if (rbig && other.rbig)
+        *rbig += *other.rbig;
     return *this;
 }
 
-Result& Result::operator-=(Result b) {
-    r32 -= b.r32;
-    if (r64 && b.r64)
-        *r64 -= *b.r64;
-    if (rreal && b.rreal)
-        *rreal -= *b.rreal;
-    if (rbig && b.rbig)
-        *rbig -= *b.rbig;
+Result& Result::operator-=(Result other) {
+    if (r32 && other.r32)
+        *r32 -= *other.r32;
+    if (r64 && other.r64)
+        *r64 -= *other.r64;
+    if (rreal && other.rreal)
+        *rreal -= *other.rreal;
+    if (rbig && other.rbig)
+        *rbig -= *other.rbig;
     return *this;
 }
 
-Result& Result::operator*=(Result b) {
-    r32 *= b.r32;
-    if (r64 && b.r64)
-        *r64 *= *b.r64;
-    if (rreal && b.rreal)
-        *rreal *= *b.rreal;
-    if (rbig && b.rbig)
-        *rbig *= *b.rbig;
+Result& Result::operator*=(Result other) {
+    if (r32 && other.r32)
+        *r32 *= *other.r32;
+    if (r64 && other.r64)
+        *r64 *= *other.r64;
+    if (rreal && other.rreal)
+        *rreal *= *other.rreal;
+    if (rbig && other.rbig)
+        *rbig *= *other.rbig;
     return *this;
 }
 
-Result& Result::operator/=(Result b) {
-    r32 /= b.r32;
-    if (r64 && b.r64)
-        *r64 /= *b.r64;
-    if (rreal && b.rreal)
-        *rreal /= *b.rreal;
-    if (rbig && b.rbig)
-        *rbig /= *b.rbig;
+Result& Result::operator/=(Result other) {
+    if (r32 && other.r32)
+        *r32 /= *other.r32;
+    if (r64 && other.r64)
+        *r64 /= *other.r64;
+    if (rreal && other.rreal)
+        *rreal /= *other.rreal;
+    if (rbig && other.rbig)
+        *rbig /= *other.rbig;
     return *this;
 }
 
-Result& Result::operator<<=(Result b) {
-    r32 <<= b.r32;
-    if (r64 && b.r64)
-        *r64 <<= *b.r64;
+Result& Result::operator<<=(Result other) {
+    if (r32 && other.r32) {
+        if (*other.r32 < 32)
+            *r32 <<= *other.r32;
+        else
+            r32 = std::nullopt;
+    }
+    if (r64 && other.r64) {
+        if (*other.r64 < 64)
+            *r64 <<= *other.r64;
+        else
+            r64 = std::nullopt;
+    }
     rreal = std::nullopt;
-    if (rbig && b.rbig)
-        *rbig <<= *b.rbig;
+    if (rbig && other.rbig)
+        *rbig <<= *other.rbig;
     return *this;
 }
 
-Result& Result::operator>>=(Result b) {
-    r32 >>= b.r32;
-    if (r64 && b.r64)
-        *r64 >>= *b.r64;
+Result& Result::operator>>=(Result other) {
+    if (r32 && other.r32) {
+        if (*other.r32 < 32)
+            *r32 >>= *other.r32;
+        else
+            r32 = std::nullopt;
+    }
+    if (r64 && other.r64) {
+        if (*other.r64 < 64)
+            *r64 >>= *other.r64;
+        else
+            r64 = std::nullopt;
+    }
     rreal = std::nullopt;
-    if (rbig && b.rbig)
-        *rbig >>= *b.rbig;
+    if (rbig && other.rbig)
+        *rbig >>= *other.rbig;
     return *this;
 }
 
-Result& Result::operator&=(Result b) {
-    r32 &= b.r32;
-    if (r64 && b.r64)
-        *r64 &= *b.r64;
+Result& Result::operator&=(Result other) {
+    if (r32 && other.r32)
+        *r32 &= *other.r32;
+    if (r64 && other.r64)
+        *r64 &= *other.r64;
     rreal = std::nullopt;
-    if (rbig && b.rbig)
-        *rbig &= *b.rbig;
+    if (rbig && other.rbig)
+        *rbig &= *other.rbig;
     return *this;
 }
 
-Result& Result::operator|=(Result b) {
-    r32 |= b.r32;
-    if (r64 && b.r64)
-        *r64 |= *b.r64;
+Result& Result::operator|=(Result other) {
+    if (r32 && other.r32)
+        *r32 |= *other.r32;
+    if (r64 && other.r64)
+        *r64 |= *other.r64;
     rreal = std::nullopt;
-    if (rbig && b.rbig)
-        *rbig |= *b.rbig;
+    if (rbig && other.rbig)
+        *rbig |= *other.rbig;
     return *this;
 }
 
-Result& Result::operator^=(Result b) {
-    r32 ^= b.r32;
-    if (r64 && b.r64)
-        *r64 ^= *b.r64;
+Result& Result::operator^=(Result other) {
+    if (r32 && other.r32)
+        *r32 ^= *other.r32;
+    if (r64 && other.r64)
+        *r64 ^= *other.r64;
     rreal = std::nullopt;
-    if (rbig && b.rbig)
-        *rbig ^= *b.rbig;
+    if (rbig && other.rbig)
+        *rbig ^= *other.rbig;
     return *this;
 }
 
 Result& Result::operator~() {
-    r32 = ~r32;
+    if (r32)
+        *r32 = ~r32.value();
     if (r64)
         *r64 = ~*r64;
     rreal = std::nullopt;
@@ -249,38 +277,38 @@ struct Context {
             operators_.pop();
             operands_.push(r);
         } else {
-            auto b = operands_.top();
+            auto other = operands_.top();
             operands_.pop();
             auto a = operands_.top();
             operands_.pop();
 
             switch (operators_.top()) {
                 case Operator::BMinus:
-                    a -= b;
+                    a -= other;
                     break;
                 case Operator::Plus:
-                    a += b;
+                    a += other;
                     break;
                 case Operator::Mult:
-                    a *= b;
+                    a *= other;
                     break;
                 case Operator::Div:
-                    a /= b;
+                    a /= other;
                     break;
                 case Operator::LShift:
-                    a <<= b;
+                    a <<= other;
                     break;
                 case Operator::RShift:
-                    a >>= b;
+                    a >>= other;
                     break;
                 case Operator::And:
-                    a &= b;
+                    a &= other;
                     break;
                 case Operator::Or:
-                    a |= b;
+                    a |= other;
                     break;
                 case Operator::Xor:
-                    a ^= b;
+                    a ^= other;
                     break;
 
                 default:
