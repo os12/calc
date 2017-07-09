@@ -73,7 +73,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)nana\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)_$(Configuration)\obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -87,7 +87,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)nana\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)_$(Configuration)\obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -96,7 +96,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;GOOGLE_GLOG_DLL_DECL=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -136,7 +136,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;GOOGLE_GLOG_DLL_DECL=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -207,6 +207,9 @@
     <None Include="big\Cbnl64.inl" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\glog\vsprojects\libglog_static\libglog_static.vcxproj">
+      <Project>{772c2111-bbbf-49e6-b912-198a7f7a88e5}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\nana\build\vc2017\nana.vcxproj">
       <Project>{42d0520f-efa5-4831-84fe-2b9085301c5d}</Project>
     </ProjectReference>

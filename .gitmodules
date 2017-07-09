@@ -2,3 +2,7 @@
 	path = nana
 	url = git@github.com:os12/nana.git
 	branch = integration
+[submodule "glog"]
+	path = glog
+	url = git@github.com:os12/glog.git
+	branch = integration

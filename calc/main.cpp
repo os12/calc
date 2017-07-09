@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include <glog/logging.h>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/textbox.hpp>
 #include <nana/gui/widgets/label.hpp>
@@ -65,6 +66,9 @@ int __stdcall WinMain(
     _In_ HINSTANCE hPrevInstance,
     _In_ LPSTR     lpCmdLine,
     _In_ int       nCmdShow) {
+
+    FLAGS_log_dir = "./";
+    google::InitGoogleLogging("calc.exe");
 
     // Define a form object, class form will create a window
     // when a form instance is created.
@@ -136,4 +140,6 @@ int __stdcall WinMain(
     fm.show();
     input.focus();
     nana::exec();
+
+    google::ShutdownGoogleLogging();
 }
