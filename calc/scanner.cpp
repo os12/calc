@@ -58,6 +58,8 @@ std::deque<Token> Scan(const std::string& inp) {
             // Eat whitespace
             case ' ':
             case '\t':
+            case '\r':
+            case '\n':
                 ++pos;
                 break;
 

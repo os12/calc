@@ -87,9 +87,7 @@ int __stdcall WinMain(
     FLAGS_log_dir = "./";
     google::InitGoogleLogging("calc.exe");
 
-    // Define a form object, class form will create a window
-    // when a form instance is created.
-    // The new window default visibility is false.
+    // The form object. It creates a window, but it is invisible by default.
     nana::form form;
 
     nana::paint::font result_font("Verdana", 10);
