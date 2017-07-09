@@ -22,11 +22,23 @@ void Parse(std::string input, T& out_controls) {
     };
 
     if (result.r32) {
-        get_control("dec32").control->caption(std::to_string(*result.r32));
+        get_control("signed32")
+            .control->caption(std::to_string(static_cast<int>(*result.r32)));
+        get_control("unsigned32").control->caption(std::to_string(*result.r32));
 
         char buf[64];
         sprintf_s(buf, sizeof(buf), "%08X", *result.r32);
         get_control("hex32").control->caption(buf);
+    }
+
+    if (result.r64) {
+        char buf[64];
+        sprintf_s(buf,
+                  sizeof(buf),
+                  "%08I64X %08I64X",
+                  *result.r64 >> 32,
+                  *result.r64 & 0xFFFFFFFF);
+        get_control("hex64").control->caption(buf);
     }
 
     if (result.rreal) {
@@ -52,8 +64,10 @@ struct OutControl {
     OutControl(const nana::form& owner,
                const nana::paint::font& font,
                const std::string& name)
-        : label(std::make_unique<nana::label>(owner, name)),
+        : label(std::make_unique<nana::label>(owner, name + ":")),
           control(std::make_unique<nana::textbox>(owner)) {
+        label->text_align(nana::align::right, nana::align_v::center);
+
         control->bgcolor(nana::colors::light_gray);
         control->typeface(font);
         control->line_wrapped(true);
@@ -76,23 +90,20 @@ int __stdcall WinMain(
     // Define a form object, class form will create a window
     // when a form instance is created.
     // The new window default visibility is false.
-    nana::form fm;
+    nana::form form;
 
     nana::paint::font result_font("Verdana", 10);
-    std::map<std::string, OutControl> out_controls;
-    out_controls["dec32"] = OutControl(fm, result_font, "dec32");
-    out_controls["hex32"] = OutControl(fm, result_font, "hex32");
-    out_controls["real"] = OutControl(fm, result_font, "real");
-    out_controls["realexp"] = OutControl(fm, result_font, "real exp");
-    out_controls["big"] = OutControl(fm, result_font, "big");
 
-    auto get_control = [&out_controls](const char *name) -> OutControl & {
-        return out_controls.find(name)->second;
-    };
-    nana::label statusbar{fm};
+    std::vector<std::string> names = {
+        "signed32", "unsigned32", "hex32", "hex64", "real", "realexp", "big"};
+    std::map<std::string, OutControl> out_controls;
+    for (const auto &name : names)
+        out_controls[name] = OutControl(form, result_font, name);
+
+    nana::label statusbar{form};
     statusbar.format(true);
 
-    nana::textbox input{fm};
+    nana::textbox input{form};
     input.line_wrapped(true);
     input.typeface(nana::paint::font("Verdana", 12));
     input.events().text_changed([&out_controls, &statusbar](const nana::arg_textbox &arg) {
@@ -108,39 +119,32 @@ int __stdcall WinMain(
     });
 
     // Define a layout object for the form.
-    nana::place layout(fm);
+    nana::place layout(form);
 
     // The div-text
     layout.div(
         "vert<input>"
-        "<weight=20 <dec32label weight=60><dec32>>"
-        "<weight=20 <hex32label weight=60><hex32>>"
-        "<weight=20 <reallabel weight=60><real>>"
-        "<weight=20 <realexplabel weight=60><realexp>>"
-        "<<biglabel weight=60><big>>"
+        "<weight=20 <unsigned32label weight=70><unsigned32><signed32label weight=70><signed32>>"
+        "<weight=20 <hex32label weight=70><hex32>>"
+        "<weight=20 <hex64label weight=70><hex64>>"
+        "<weight=20 <reallabel weight=70><real>>"
+        "<weight=20 <realexplabel weight=70><realexp>>"
+        "<<biglabel weight=70><big>>"
         "<status weight=20>");
     
     layout["input"] << input;
 
-    layout["dec32label"] << *get_control("dec32").label;
-    layout["dec32"] << *get_control("dec32").control;
-
-    layout["hex32label"] << *get_control("hex32").label;
-    layout["hex32"] << *get_control("hex32").control;
-
-    layout["reallabel"] << *get_control("real").label;
-    layout["real"] << *get_control("real").control;
-
-    layout["realexplabel"] << *get_control("realexp").label;
-    layout["realexp"] << *get_control("realexp").control;
-
-    layout["biglabel"] << *get_control("big").label;
-    layout["big"] << *get_control("big").control;
+    for (auto& entry : out_controls) {
+        layout[(entry.first + "label").c_str()] << *entry.second.label;
+        layout[entry.first.c_str()] << *entry.second.control;
+    }
 
     layout["status"] << statusbar;
     layout.collocate();
 
-    fm.show();
+    form.caption("Calc!");
+    form.size({400, 200});
+    form.show();
     input.focus();
     nana::exec();
 
