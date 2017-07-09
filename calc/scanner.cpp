@@ -14,8 +14,9 @@ bool IsHexOrFloatDigit(char c) {
 
 bool NumberContainsHexChars(const std::string &s) {
     for (auto c : s) {
-        assert(IsHexOrFloatDigit(c) && c != '.');
-        if (!isdigit(c)) return true;
+        assert(IsHexOrFloatDigit(c));
+        if (!isdigit(c) && c != '.')
+            return true;
     }
     return false;
 }
@@ -71,7 +72,7 @@ std::deque<Token> Scan(const std::string& inp) {
             case '|':
             case '&':
             case '^':
-                out.push_back(Token::Type(inp[pos]));
+                out.push_back(Token{Token::Type(inp[pos])});
                 ++pos;
                 break;
 
@@ -82,7 +83,7 @@ std::deque<Token> Scan(const std::string& inp) {
                     throw std::runtime_error(
                         std::string("Invalid input: unexpected char: ") + inp[pos]);
                 ++pos;
-                out.push_back({Token::Type::LShift});
+                out.push_back(Token{Token::Type::LShift});
                 break;
 
             // Take two-character RShift token: >>
@@ -92,7 +93,7 @@ std::deque<Token> Scan(const std::string& inp) {
                     throw std::runtime_error(
                         std::string("Invalid input: unexpected char: ") + inp[pos]);
                 ++pos;
-                out.push_back({Token::Type::RShift});
+                out.push_back(Token{Token::Type::RShift});
                 break;
 
             // The remaining one is the Integer (variable size, prefixes, etc)

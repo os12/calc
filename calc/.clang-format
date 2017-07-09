@@ -7,4 +7,5 @@ DerivePointerAlignment : false
 PointerAlignment: Left
 BinPackArguments: false
 BinPackParameters: false
-
+#AllowShortBlocksOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false

@@ -3,83 +3,133 @@
 
 namespace parser {
 
+Result::Result(const std::string& number, int base) {
+    // Initialize the Big integer if we have no decimals.
+    if (number.find('.') == std::string::npos)
+        rbig = cBigNumber(number.data(), base);
+
+    // Initialize the fixed-width integers if we have a Big integer and it fits.
+    size_t last;
+    if (rbig && rbig.value().length() <= 1) {
+        r64 = stoull(number, &last, base);
+        assert(last == number.size());
+        assert(rbig.value().toCBNL() == r64.value());
+
+        if (*r64 <= std::numeric_limits<uint32_t>::max()) {
+            r32 = static_cast<uint32_t>(*r64);
+            assert(*r64 == r32);
+        }
+    }
+
+    // Initialize the floating-point quantity from every decimal.
+    if (base == 10) {
+        double fp64 = stold(number, &last);
+        if (last == number.size())
+            rreal = fp64;
+    }
+}
+
 Result& Result::operator+=(Result b) {
     r32 += b.r32;
-    r64 += b.r64;
-    rreal += b.rreal;
-    rbig += b.rbig;
+    if (r64 && b.r64)
+        *r64 += *b.r64;
+    if (rreal && b.rreal)
+        *rreal += *b.rreal;
+    if (rbig && b.rbig)
+        *rbig += *b.rbig;
     return *this;
 }
 
 Result& Result::operator-=(Result b) {
     r32 -= b.r32;
-    r64 -= b.r64;
-    rreal -= b.rreal;
-    rbig -= b.rbig;
+    if (r64 && b.r64)
+        *r64 -= *b.r64;
+    if (rreal && b.rreal)
+        *rreal -= *b.rreal;
+    if (rbig && b.rbig)
+        *rbig -= *b.rbig;
     return *this;
 }
 
 Result& Result::operator*=(Result b) {
     r32 *= b.r32;
-    r64 *= b.r64;
-    rreal *= b.rreal;
-    rbig *= b.rbig;
+    if (r64 && b.r64)
+        *r64 *= *b.r64;
+    if (rreal && b.rreal)
+        *rreal *= *b.rreal;
+    if (rbig && b.rbig)
+        *rbig *= *b.rbig;
     return *this;
 }
 
 Result& Result::operator/=(Result b) {
     r32 /= b.r32;
-    r64 /= b.r64;
-    rreal /= b.rreal;
-    rbig /= b.rbig;
+    if (r64 && b.r64)
+        *r64 /= *b.r64;
+    if (rreal && b.rreal)
+        *rreal /= *b.rreal;
+    if (rbig && b.rbig)
+        *rbig /= *b.rbig;
     return *this;
 }
 
 Result& Result::operator<<=(Result b) {
     r32 <<= b.r32;
-    r64 <<= b.r64;
-    rreal = r64;
-    rbig <<= b.rbig;
+    if (r64 && b.r64)
+        *r64 <<= *b.r64;
+    rreal = std::nullopt;
+    if (rbig && b.rbig)
+        *rbig <<= *b.rbig;
     return *this;
 }
 
 Result& Result::operator>>=(Result b) {
     r32 >>= b.r32;
-    r64 >>= b.r64;
-    rreal = r64;
-    rbig >>= b.rbig;
+    if (r64 && b.r64)
+        *r64 >>= *b.r64;
+    rreal = std::nullopt;
+    if (rbig && b.rbig)
+        *rbig >>= *b.rbig;
     return *this;
 }
 
 Result& Result::operator&=(Result b) {
     r32 &= b.r32;
-    r64 &= b.r64;
-    rreal = r64;
-    rbig &= b.rbig;
+    if (r64 && b.r64)
+        *r64 &= *b.r64;
+    rreal = std::nullopt;
+    if (rbig && b.rbig)
+        *rbig &= *b.rbig;
     return *this;
 }
 
 Result& Result::operator|=(Result b) {
     r32 |= b.r32;
-    r64 |= b.r64;
-    rreal = r64;
-    rbig |= b.rbig;
+    if (r64 && b.r64)
+        *r64 |= *b.r64;
+    rreal = std::nullopt;
+    if (rbig && b.rbig)
+        *rbig |= *b.rbig;
     return *this;
 }
 
 Result& Result::operator^=(Result b) {
     r32 ^= b.r32;
-    r64 ^= b.r64;
-    rreal = r64;
-    rbig ^= b.rbig;
+    if (r64 && b.r64)
+        *r64 ^= *b.r64;
+    rreal = std::nullopt;
+    if (rbig && b.rbig)
+        *rbig ^= *b.rbig;
     return *this;
 }
 
 Result& Result::operator~() {
     r32 = ~r32;
-    r64 = ~r64;
-    rreal = r64;
-    rbig = ~rbig;
+    if (r64)
+        *r64 = ~*r64;
+    rreal = std::nullopt;
+    if (rbig)
+        *rbig = ~*rbig;
     return *this;
 }
 
@@ -123,7 +173,7 @@ struct Context {
 
     auto Next() const {
         assert(!Eof());
-        return begin_->type_;
+        return begin_->type;
     }
 
     bool NextIsBinOp() const {
@@ -142,7 +192,7 @@ struct Context {
 
     Result ConsumeInt() {
         assert(!Eof() && Next() == Token::Type::Int);
-        Result r = begin_->ExtractInt();
+        Result r(begin_->value, begin_->base);
         Consume();
         return r;
     }
@@ -188,11 +238,11 @@ struct Context {
 
     void PopOperator() {
         if (operators_.top() == Operator::UMinus) {
-            Result r;
-            r -= operands_.top();
+            auto result =operands_.top();
             operands_.pop();
             operators_.pop();
-            operands_.push(r);
+            result *= Result("-1");
+            operands_.push(result);
         } else if (operators_.top() == Operator::Not) {
             auto r = ~operands_.top();
             operands_.pop();
@@ -324,7 +374,7 @@ Result Parse(I begin, I end) {
 Result Compute(const std::string& inp) {
     auto token_stream = Scan(inp);
     if (token_stream.empty())
-        return Result();
+        return Result(0);
 
     return Parse(token_stream.begin(), token_stream.end());
 }
