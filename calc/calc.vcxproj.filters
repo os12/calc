@@ -52,6 +52,9 @@
     <ClInclude Include="stdafx.h">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="scanner.h">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="big\Cbignum.cpp">

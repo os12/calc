@@ -55,12 +55,10 @@ Token ExtractVariableSizedToken(const std::string& input, size_t& pos) {
 
     // Reject non-number chars right here.
     if (number.empty())
-        throw std::runtime_error(std::string("Invalid input: unexpected char: ") +
-                                 input[pos]);
+        throw Exception("Invalid input: unexpected char: " + input.substr(pos));
 
     if (base == 10 && NumberContainsHexChars(number))
-        throw std::runtime_error("Invalid input: hex chars in a base/10 number: " +
-                                 number);
+        throw Exception("Invalid input: hex chars in a base/10 number: " + number);
 
     // Done. We have a well-formed Integer.
     return Token{Token::Type::Int, number, base};
@@ -88,8 +86,7 @@ std::string ToString(Token::Type tt) {
     CASE(Function);
     };
 
-    throw std::runtime_error(std::string("Unrecognized token type: ") +
-                             std::to_string(static_cast<int>(tt)));
+    throw Exception("Unrecognized token type: " + std::to_string(static_cast<int>(tt)));
 }
 
 #undef CASE
@@ -126,8 +123,7 @@ std::deque<Token> Scan(const std::string& inp) {
             case '<':
                 ++pos;
                 if (pos >= inp.size() || inp[pos] != '<')
-                    throw std::runtime_error(
-                        std::string("Invalid input: unexpected char: ") + inp[pos]);
+                    throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
                 ++pos;
                 out.push_back(Token{Token::Type::LShift});
                 break;
@@ -136,8 +132,7 @@ std::deque<Token> Scan(const std::string& inp) {
             case '>':
                 ++pos;
                 if (pos >= inp.size() || inp[pos] != '>')
-                    throw std::runtime_error(
-                        std::string("Invalid input: unexpected char: ") + inp[pos]);
+                    throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
                 ++pos;
                 out.push_back(Token{Token::Type::RShift});
                 break;

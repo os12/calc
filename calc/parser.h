@@ -2,9 +2,13 @@
 
 #include <optional>
 #include "big/Cbignum.h"
+#include "scanner.h"
 
 namespace parser {
 
+// The compulation result. Generally, a subset of fields has meaningful values as various
+// operators and functions restrict the full function's (well, it's an expression really)
+// range.
 struct Result {
     explicit Result() = default;
 
@@ -37,47 +41,13 @@ struct Result {
     void ApplyUnaryFunction(const std::string& fname);
 };
 
-struct Token {
-  enum class Type {
-    Int,
-    
-    LParen  = '(',
-    RParen  = ')',
-    
-    // Arithmetic ops, mostly binary.
-    Minus   = '-',
-    Plus    = '+',
-    Mult    = '*',
-    Div     = '/',
-    
-    // Bitwise ops, mostly binary.
-    Not     = '~',
-    Or      = '|',
-    And     = '&',
-    Xor     = '^',
-    LShift,
-    RShift,
-
-    // Algebraic and trigonomic functions.
-    Function
-  };
-
-  explicit Token(Type type, std::string value = "", int base = 10)
-      : type(type), value(value), base(base) {}
-
-  Type type;
-  std::string value;
-  int base = -1;
+// The Parser (and the Scanner) throw this object when the input is invalid.
+class Exception : public std::runtime_error {
+   public:
+    Exception(std::string msg) : runtime_error(std::move(msg)) {}
 };
 
-std::string ToString(Token::Type tt);
-
-inline std::ostream& operator<<(std::ostream& s, Token::Type tt) {
-    s << ToString(tt);
-    return s;
-}
-
-std::deque<Token> Scan(const std::string &inp);
+// The main entry point - pass a C-style expression and get the result.
 Result Compute(const std::string &input);
 
 }

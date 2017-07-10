@@ -93,7 +93,7 @@ void Result::ApplyUnaryFunction(const std::string& fname) {
         return;
     }
 
-    throw std::runtime_error(std::string("Unsupported unary function: ") + fname);
+    throw Exception("Unsupported unary function: " + fname);
 }
 
 Result& Result::operator+=(Result other) {
@@ -304,7 +304,7 @@ struct Context {
 
     Operator ConsumeBinaryOp() {
         if (Eof())
-            throw std::runtime_error("Abrupt end of input while parsing a 'binary op'.");
+            throw Exception("Abrupt end of input while parsing a 'binary op'.");
 
         static const std::map<Token::Type, Operator> bin_ops = {
             {Token::Type::Minus, Operator::BMinus},
@@ -319,7 +319,7 @@ struct Context {
 
         auto i = bin_ops.find(Next());
         if (i == bin_ops.end())
-            throw std::runtime_error("Failed to parse a binary op");
+            throw Exception("Failed to parse a binary op");
 
         Consume();
         return i->second;
@@ -327,7 +327,7 @@ struct Context {
 
     Operator ConsumeUnaryOp() {
         if (Eof())
-            throw std::runtime_error("Abrupt end of input while parsing a 'unary op'.");
+            throw Exception("Abrupt end of input while parsing a 'unary op'.");
 
         switch (Next()) {
             case Token::Type::Minus:
@@ -338,7 +338,7 @@ struct Context {
                 return Operator::Not;
 
             default:
-                throw std::runtime_error("Failed to parse a unary op");
+                throw Exception("Failed to parse a unary op");
         }
     }
 
@@ -350,70 +350,65 @@ struct Context {
     }
 
     void PopOperator() {
-        Result result;
+        DCHECK(!operators_.empty());
+        DCHECK(!operands_.empty());
 
+        // Deal with unary operators.
         switch (operators_.top()) {
             case Operator::UMinus:
                 operators_.pop();
-                result = operands_.top();
-                operands_.pop();
-                result *= Result("-1");
-                operands_.push(result);
-                break;
+                operands_.top() *= Result("-1");
+                return;
 
             case Operator::Not:
                 operators_.pop();
-                result = ~operands_.top();
-                operands_.pop();
-                operands_.push(result);
+                operands_.top().operator~();
+                return;
+
+            default:
+                break;
+        }
+
+        // Deal with binary ops.
+        auto other = operands_.top();
+        operands_.pop();
+        if (operands_.empty())
+            throw Exception("Not enough operands to handle a binary operator");
+        switch (operators_.top()) {
+            case Operator::BMinus:
+                operands_.top() -= other;
+                break;
+            case Operator::Plus:
+                operands_.top() += other;
+                break;
+            case Operator::Mult:
+                operands_.top() *= other;
+                break;
+            case Operator::Div:
+                operands_.top() /= other;
+                break;
+            case Operator::LShift:
+                operands_.top() <<= other;
+                break;
+            case Operator::RShift:
+                operands_.top() >>= other;
+                break;
+            case Operator::And:
+                operands_.top() &= other;
+                break;
+            case Operator::Or:
+                operands_.top() |= other;
+                break;
+            case Operator::Xor:
+                operands_.top() ^= other;
                 break;
 
-            default: {
-                // Process the binary ops.
-                auto other = operands_.top();
-                operands_.pop();
-                auto a = operands_.top();
-                operands_.pop();
-
-                switch (operators_.top()) {
-                    case Operator::BMinus:
-                        a -= other;
-                        break;
-                    case Operator::Plus:
-                        a += other;
-                        break;
-                    case Operator::Mult:
-                        a *= other;
-                        break;
-                    case Operator::Div:
-                        a /= other;
-                        break;
-                    case Operator::LShift:
-                        a <<= other;
-                        break;
-                    case Operator::RShift:
-                        a >>= other;
-                        break;
-                    case Operator::And:
-                        a &= other;
-                        break;
-                    case Operator::Or:
-                        a |= other;
-                        break;
-                    case Operator::Xor:
-                        a ^= other;
-                        break;
-
-                    default:
-                        throw std::runtime_error(
-                            "Unexpected op while computing an expression: " +
-                            std::to_string(static_cast<int>(operators_.top())));
-                }
-
-                operators_.pop();
-                operands_.push(a);
-            }
+            default:
+                throw Exception("Unexpected op while computing an expression: " +
+                                std::to_string(static_cast<int>(operators_.top())));
         }
+
+        operators_.pop();
     }
 
     void PushOperator(Operator op) {
@@ -440,7 +435,7 @@ struct Context {
 template <typename I>
 void Expression(Context<I>& ctx) {
     if (ctx.Eof())
-        throw std::runtime_error("Abrupt end of input while parsing an 'expression'.");
+        throw Exception("Abrupt end of input while parsing an 'expression'.");
 
     Term(ctx);
 
@@ -456,7 +451,7 @@ void Expression(Context<I>& ctx) {
 template <typename I>
 void Term(Context<I>& ctx) {
     if (ctx.Eof())
-        throw std::runtime_error("Abrupt end of input while parsing a 'term'.");
+        throw Exception("Abrupt end of input while parsing a 'term'.");
 
     switch (ctx.Next()) {
         // The terminals
@@ -477,11 +472,10 @@ void Term(Context<I>& ctx) {
             ctx.PushSentinel();
             Expression(ctx);
             if (ctx.Eof())
-                throw std::runtime_error("Missing RParen");
+                throw Exception("Missing RParen");
             if (ctx.Next() != Token::Type::RParen)
-                throw std::runtime_error(
-                    std::string("Unxpected token while expecting RParen: ") +
-                    ToString(ctx.Next()));
+                throw Exception("Unxpected token while expecting RParen: " +
+                                ToString(ctx.Next()));
             ctx.Consume();
             ctx.PopSentinel();
             break;
@@ -490,28 +484,25 @@ void Term(Context<I>& ctx) {
         case Token::Type::Function: {
             Token func = ctx.Consume();
             if (ctx.Eof())
-                throw std::runtime_error("Missing LParen");
+                throw Exception("Missing LParen");
             if (ctx.Next() != Token::Type::LParen)
-                throw std::runtime_error(
-                    std::string("Unxpected token while expecting LParen: ") +
-                    ToString(ctx.Next()));
+                throw Exception("Unxpected token while expecting LParen: " +
+                                ToString(ctx.Next()));
             ctx.Consume();
             Expression(ctx);
             if (ctx.Eof())
-                throw std::runtime_error("Missing RParen");
+                throw Exception("Missing RParen");
             if (ctx.Next() != Token::Type::RParen)
-                throw std::runtime_error(
-                    std::string("Unxpected token while expecting RParen: ") +
-                    ToString(ctx.Next()));
+                throw Exception("Unxpected token while expecting RParen: " +
+                                ToString(ctx.Next()));
             ctx.Consume();
             ctx.ApplyUnaryFunction(func);
             break;
         }
 
         default:
-            throw std::runtime_error(
-                std::string("Failed to parse a 'term': unexpected token: ") +
-                ToString(ctx.Next()));
+            throw Exception("Failed to parse a 'term': unexpected token: " +
+                            ToString(ctx.Next()));
     }
 }
 
@@ -519,6 +510,8 @@ template <typename I>
 Result Parse(I begin, I end) {
     Context<I> ctx{begin, end};
     Expression(ctx);
+    if (!ctx.Eof())
+        throw Exception("Unexpected token(s) at the end: " + ToString(ctx.Next()));
     return ctx.operands_.top();
 }
 

@@ -158,6 +158,7 @@
     <ClInclude Include="big\Exstring.h" />
     <ClInclude Include="big\Exthread.h" />
     <ClInclude Include="parser.h" />
+    <ClInclude Include="scanner.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
