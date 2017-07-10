@@ -372,8 +372,7 @@ struct Context {
         // Deal with binary ops.
         auto other = operands_.top();
         operands_.pop();
-        if (operands_.empty())
-            throw Exception("Not enough operands to handle a binary operator");
+        DCHECK(!operands_.empty());
         switch (operators_.top()) {
             case Operator::BMinus:
                 operands_.top() -= other;
@@ -418,7 +417,9 @@ struct Context {
     }
 
     void PushSentinel() {
-        PushOperator(Operator::Sentinel);
+        // Push it directly for the "term := ( expression )" case, without any poping (as
+        // that would try calculating a partially-formed expression and fail).
+        operators_.push(Operator::Sentinel);
     }
 
     void PopSentinel() {
@@ -511,7 +512,8 @@ Result Parse(I begin, I end) {
     Context<I> ctx{begin, end};
     Expression(ctx);
     if (!ctx.Eof())
-        throw Exception("Unexpected token(s) at the end: " + ToString(ctx.Next()));
+        throw Exception("Unexpected token(s) at the end: " + ToString(ctx.Next()) +
+                        " : " + ctx.begin_->value);
     return ctx.operands_.top();
 }
 

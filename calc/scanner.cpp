@@ -115,7 +115,7 @@ std::deque<Token> Scan(const std::string& inp) {
             case '|':
             case '&':
             case '^':
-                out.push_back(Token{Token::Type(inp[pos])});
+                out.push_back(Token{Token::Type(inp[pos]), inp.substr(pos, 1)});
                 ++pos;
                 break;
 
@@ -125,7 +125,7 @@ std::deque<Token> Scan(const std::string& inp) {
                 if (pos >= inp.size() || inp[pos] != '<')
                     throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
                 ++pos;
-                out.push_back(Token{Token::Type::LShift});
+                out.push_back(Token{Token::Type::LShift, "<<"});
                 break;
 
             // Take two-character RShift token: >>
@@ -134,7 +134,7 @@ std::deque<Token> Scan(const std::string& inp) {
                 if (pos >= inp.size() || inp[pos] != '>')
                     throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
                 ++pos;
-                out.push_back(Token{Token::Type::RShift});
+                out.push_back(Token{Token::Type::RShift, ">>"});
                 break;
 
             // The remaining tokens are:
