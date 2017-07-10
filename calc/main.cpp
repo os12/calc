@@ -11,8 +11,10 @@
 namespace {
 
 template <typename T>
-void Parse(std::string input, T& out_controls) {
+std::string Parse(std::string input, T& out_controls) {
     auto result = parser::Compute(input);
+    if (!result.Valid())
+        return "No valid result could be computed.";
 
     for (auto& entry : out_controls)
         entry.second.control->caption("");
@@ -53,6 +55,8 @@ void Parse(std::string input, T& out_controls) {
         cBigString buf;
         get_control("big").control->caption(result.rbig.value().toa(buf));
     }
+
+    return "OK";
 }
 
 }  // namespace
@@ -104,10 +108,14 @@ int __stdcall WinMain(
     nana::textbox input{form};
     input.line_wrapped(true);
     input.typeface(nana::paint::font("Verdana", 12));
-    input.events().text_changed([&out_controls, &statusbar](const nana::arg_textbox &arg) {
+    input.events().text_changed([&out_controls,
+                                 &statusbar](const nana::arg_textbox& arg) {
+        for (auto& entry : out_controls)
+            entry.second.control->caption("");
+
         try {
-            Parse(arg.widget.caption(), out_controls);
-            statusbar.caption("OK");
+            auto msg = Parse(arg.widget.caption(), out_controls);
+            statusbar.caption(msg);
         } catch (std::exception &e) {
             // ClearAll();
             OutputDebugLine(e.what());
@@ -144,6 +152,7 @@ int __stdcall WinMain(
     form.size({400, 200});
     form.show();
     input.focus();
+    input.caption("");
     nana::exec();
 
     google::ShutdownGoogleLogging();

@@ -6,6 +6,8 @@
 namespace parser {
 
 struct Result {
+    explicit Result() = default;
+
     explicit Result(uint32_t r32) : r32(r32), rbig(r32) {
         rreal = r32;
         r64 = r32;
@@ -17,6 +19,8 @@ struct Result {
     std::optional<uint32_t> r32;
     std::optional<double> rreal;
     std::optional<cBigNumber> rbig;
+
+    bool Valid() const { return r64 || r32 || rreal || rbig; }
 
     Result& operator+=(Result b);
     Result& operator-=(Result b);

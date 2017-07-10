@@ -401,7 +401,7 @@ Result Parse(I begin, I end) {
 Result Compute(const std::string& inp) {
     auto token_stream = Scan(inp);
     if (token_stream.empty())
-        return Result(0);
+        return Result();
 
     return Parse(token_stream.begin(), token_stream.end());
 }
