@@ -33,6 +33,8 @@ struct Result {
     Result& operator^=(Result b);
 
     Result& operator~();
+
+    void ApplyUnaryFunction(const std::string& fname);
 };
 
 struct Token {
@@ -42,19 +44,22 @@ struct Token {
     LParen  = '(',
     RParen  = ')',
     
-    // Arithmetic
+    // Arithmetic ops, mostly binary.
     Minus   = '-',
     Plus    = '+',
     Mult    = '*',
     Div     = '/',
     
-    // Bitwise
+    // Bitwise ops, mostly binary.
     Not     = '~',
     Or      = '|',
     And     = '&',
     Xor     = '^',
     LShift,
-    RShift
+    RShift,
+
+    // Algebraic and trigonomic functions.
+    Function
   };
 
   explicit Token(Type type, std::string value = "", int base = 10)
@@ -62,13 +67,14 @@ struct Token {
 
   Type type;
   std::string value;
-  int base;
+  int base = -1;
 };
 
 std::string ToString(Token::Type tt);
 
 inline std::ostream& operator<<(std::ostream& s, Token::Type tt) {
     s << ToString(tt);
+    return s;
 }
 
 std::deque<Token> Scan(const std::string &inp);

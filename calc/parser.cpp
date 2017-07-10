@@ -31,6 +31,71 @@ Result::Result(const std::string& number, int base) {
     }
 }
 
+void Result::ApplyUnaryFunction(const std::string& fname) {
+    if (fname == "abs") {
+        if ((r32 && *r32 < 0) || (rreal && *rreal < 0.0))
+            *this *= Result("-1");
+        return;
+    }
+
+    if (fname == "sin") {
+        if (rreal)
+            *rreal = sin(*rreal);
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
+    if (fname == "cos") {
+        if (rreal)
+            *rreal = cos(*rreal);
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
+    if (fname == "tan") {
+        if (rreal)
+            *rreal = tan(*rreal);
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
+    if (fname == "rad") {
+        if (rreal)
+            *rreal = *rreal / 180.0 * 3.14159265358979323846;
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
+    if (fname == "deg") {
+        if (rreal)
+            *rreal = *rreal / 3.14159265358979323846 * 180.0;
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
+    if (fname == "sqrt") {
+        if (rreal)
+            *rreal = sqrt(*rreal);
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        if (rbig)
+            rbig = rbig.value().sqrt();
+        return;
+    }
+
+    throw std::runtime_error(std::string("Unsupported unary function: ") + fname);
+}
+
 Result& Result::operator+=(Result other) {
     if (r32 && other.r32)
         *r32 += *other.r32;
@@ -163,11 +228,20 @@ Result& Result::operator~() {
 
 namespace {
 
-#if 0
-    expression := term [ binop term ]
-    binop := MINUS | PLUS | MULT | DIV
-    term := INT | MINUS expression | NOT expression | LPAREN expression RPAREN
-#endif
+/* 
+--------------------------------------------------------------------------------
+  Grammar:
+ 
+    expression  := term [ binop term ]
+    binop       := MINUS | PLUS | MULT | DIV
+    term        := INT
+                | MINUS expression
+                | NOT expression
+                | LPAREN expression RPAREN
+                | FUNCTION LPAREN expression RPAREN
+
+--------------------------------------------------------------------------------
+*/
 
 template <typename I>
 struct Context {
@@ -179,28 +253,31 @@ struct Context {
     enum class Operator {
         Sentinel,
 
-        Or,
+        Or,         // the lowest
         Xor,
-        And,  // the lowest
+        And,
         LShift,
         RShift,
         BMinus,
         Plus,
         Mult,
-        Div,  // higher
+        Div,        // the highest binary op
+
         UMinus,
-        Not  // the highest
+        Not         // the highest unary op
     };
 
     bool Eof() const { return begin_ == end_; }
 
-    void Consume() {
-        assert(!Eof());
+    Token Consume() {
+        DCHECK(!Eof());
+        auto rv = *begin_;
         ++begin_;
+        return rv;
     }
 
     auto Next() const {
-        assert(!Eof());
+        DCHECK(!Eof());
         return begin_->type;
     }
 
@@ -219,13 +296,13 @@ struct Context {
     }
 
     Result ConsumeInt() {
-        assert(!Eof() && Next() == Token::Type::Int);
+        DCHECK(!Eof() && Next() == Token::Type::Int);
         Result r(begin_->value, begin_->base);
         Consume();
         return r;
     }
 
-    Operator ConsumeBinOp() {
+    Operator ConsumeBinaryOp() {
         if (Eof())
             throw std::runtime_error("Abrupt end of input while parsing a 'binary op'.");
 
@@ -241,13 +318,14 @@ struct Context {
             {Token::Type::Xor, Operator::Xor}};
 
         auto i = bin_ops.find(Next());
-        if (i == bin_ops.end()) throw std::runtime_error("Failed to parse a binary op");
+        if (i == bin_ops.end())
+            throw std::runtime_error("Failed to parse a binary op");
 
         Consume();
         return i->second;
     }
 
-    Operator ConsumeUnOp() {
+    Operator ConsumeUnaryOp() {
         if (Eof())
             throw std::runtime_error("Abrupt end of input while parsing a 'unary op'.");
 
@@ -264,60 +342,77 @@ struct Context {
         }
     }
 
+    void ApplyUnaryFunction(Token token) {
+        DCHECK_EQ(operands_.size(), 1);
+        DCHECK_EQ(token.type, Token::Type::Function);
+
+        operands_.top().ApplyUnaryFunction(token.value);
+    }
+
     void PopOperator() {
-        if (operators_.top() == Operator::UMinus) {
-            auto result =operands_.top();
-            operands_.pop();
-            operators_.pop();
-            result *= Result("-1");
-            operands_.push(result);
-        } else if (operators_.top() == Operator::Not) {
-            auto r = ~operands_.top();
-            operands_.pop();
-            operators_.pop();
-            operands_.push(r);
-        } else {
-            auto other = operands_.top();
-            operands_.pop();
-            auto a = operands_.top();
-            operands_.pop();
+        Result result;
 
-            switch (operators_.top()) {
-                case Operator::BMinus:
-                    a -= other;
-                    break;
-                case Operator::Plus:
-                    a += other;
-                    break;
-                case Operator::Mult:
-                    a *= other;
-                    break;
-                case Operator::Div:
-                    a /= other;
-                    break;
-                case Operator::LShift:
-                    a <<= other;
-                    break;
-                case Operator::RShift:
-                    a >>= other;
-                    break;
-                case Operator::And:
-                    a &= other;
-                    break;
-                case Operator::Or:
-                    a |= other;
-                    break;
-                case Operator::Xor:
-                    a ^= other;
-                    break;
+        switch (operators_.top()) {
+            case Operator::UMinus:
+                operators_.pop();
+                result = operands_.top();
+                operands_.pop();
+                result *= Result("-1");
+                operands_.push(result);
+                break;
 
-                default:
-                    throw std::runtime_error(
-                        "Unexpected op while computing an expression...");
+            case Operator::Not:
+                operators_.pop();
+                result = ~operands_.top();
+                operands_.pop();
+                operands_.push(result);
+                break;
+
+            default: {
+                // Process the binary ops.
+                auto other = operands_.top();
+                operands_.pop();
+                auto a = operands_.top();
+                operands_.pop();
+
+                switch (operators_.top()) {
+                    case Operator::BMinus:
+                        a -= other;
+                        break;
+                    case Operator::Plus:
+                        a += other;
+                        break;
+                    case Operator::Mult:
+                        a *= other;
+                        break;
+                    case Operator::Div:
+                        a /= other;
+                        break;
+                    case Operator::LShift:
+                        a <<= other;
+                        break;
+                    case Operator::RShift:
+                        a >>= other;
+                        break;
+                    case Operator::And:
+                        a &= other;
+                        break;
+                    case Operator::Or:
+                        a |= other;
+                        break;
+                    case Operator::Xor:
+                        a ^= other;
+                        break;
+
+                    default:
+                        throw std::runtime_error(
+                            "Unexpected op while computing an expression: " +
+                            std::to_string(static_cast<int>(operators_.top())));
+                }
+
+                operators_.pop();
+                operands_.push(a);
             }
-
-            operators_.pop();
-            operands_.push(a);
         }
     }
 
@@ -325,6 +420,16 @@ struct Context {
         while (operators_.top() > op)
             PopOperator();
         operators_.push(op);
+    }
+
+    void PushSentinel() {
+        PushOperator(Operator::Sentinel);
+    }
+
+    void PopSentinel() {
+        CHECK(!operators_.empty());
+        CHECK(operators_.top() == Operator::Sentinel);
+        operators_.pop();
     }
 
     I begin_, end_;
@@ -340,7 +445,7 @@ void Expression(Context<I>& ctx) {
     Term(ctx);
 
     while (!ctx.Eof() && ctx.NextIsBinOp()) {
-        ctx.PushOperator(ctx.ConsumeBinOp());
+        ctx.PushOperator(ctx.ConsumeBinaryOp());
         Term(ctx);
     }
 
@@ -362,14 +467,14 @@ void Term(Context<I>& ctx) {
         // Unary ops
         case Token::Type::Minus:
         case Token::Type::Not:
-            ctx.PushOperator(ctx.ConsumeUnOp());
+            ctx.PushOperator(ctx.ConsumeUnaryOp());
             Expression(ctx);
             return;
 
         // A sub-expression with parens: ( .... )
         case Token::Type::LParen:
             ctx.Consume();
-            ctx.operators_.push(Context<I>::Operator::Sentinel);
+            ctx.PushSentinel();
             Expression(ctx);
             if (ctx.Eof())
                 throw std::runtime_error("Missing RParen");
@@ -378,9 +483,30 @@ void Term(Context<I>& ctx) {
                     std::string("Unxpected token while expecting RParen: ") +
                     ToString(ctx.Next()));
             ctx.Consume();
-            assert(ctx.operators_.top() == Context<I>::Operator::Sentinel);
-            ctx.operators_.pop();
+            ctx.PopSentinel();
             break;
+
+        // A function call with parens: xxxx( .... )
+        case Token::Type::Function: {
+            Token func = ctx.Consume();
+            if (ctx.Eof())
+                throw std::runtime_error("Missing LParen");
+            if (ctx.Next() != Token::Type::LParen)
+                throw std::runtime_error(
+                    std::string("Unxpected token while expecting LParen: ") +
+                    ToString(ctx.Next()));
+            ctx.Consume();
+            Expression(ctx);
+            if (ctx.Eof())
+                throw std::runtime_error("Missing RParen");
+            if (ctx.Next() != Token::Type::RParen)
+                throw std::runtime_error(
+                    std::string("Unxpected token while expecting RParen: ") +
+                    ToString(ctx.Next()));
+            ctx.Consume();
+            ctx.ApplyUnaryFunction(func);
+            break;
+        }
 
         default:
             throw std::runtime_error(
