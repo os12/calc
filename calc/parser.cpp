@@ -344,11 +344,6 @@ void Expression(Context<I>& ctx) {
         Term(ctx);
     }
 
-    if (!ctx.Eof())
-        throw std::runtime_error(
-            std::string("Unrecognized bits in the expression: unexpected token: ") +
-            ToString(ctx.Next()));
-
     while (ctx.operators_.top() != Context<I>::Operator::Sentinel)
         ctx.PopOperator();
 }
@@ -376,8 +371,12 @@ void Term(Context<I>& ctx) {
             ctx.Consume();
             ctx.operators_.push(Context<I>::Operator::Sentinel);
             Expression(ctx);
-            if (ctx.Eof() || ctx.Next() != Token::Type::RParen)
-                throw std::runtime_error("Mismatched paren...");
+            if (ctx.Eof())
+                throw std::runtime_error("Missing RParen");
+            if (ctx.Next() != Token::Type::RParen)
+                throw std::runtime_error(
+                    std::string("Unxpected token while expecting RParen: ") +
+                    ToString(ctx.Next()));
             ctx.Consume();
             assert(ctx.operators_.top() == Context<I>::Operator::Sentinel);
             ctx.operators_.pop();
