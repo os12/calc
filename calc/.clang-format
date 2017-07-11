@@ -9,3 +9,5 @@ BinPackArguments: false
 BinPackParameters: false
 #AllowShortBlocksOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: false
+AccessModifierOffset: -4
+IndentCaseLabels: false

@@ -1,8 +1,8 @@
 #include "stdafx.h"
-#include <string>
-#include <deque>
+
+#include <glog/logging.h>
 #include <stack>
-#include <cassert>
+
 
 #include "parser.h"
 
@@ -26,44 +26,6 @@ bool NumberContainsHexChars(const std::string &s) {
 const std::set<std::string> _functions3 = {"abs", "sin", "cos", "tan", "rad", "deg"};
 const std::set<std::string> _functions4 = {"sqrt"};
 
-Token ExtractVariableSizedToken(const std::string& input, size_t& pos) {
-    auto remaining = [&input](size_t pos) { return input.size() - pos; };
-
-    // First check for known functions.
-    if (remaining(pos) >= 3 && _functions3.count(input.substr(pos, 3)) > 0) {
-        Token rv{Token::Type::Function, input.substr(pos, 3)};
-        pos += 3;
-        return rv;
-    }
-    if (remaining(pos) >= 4 && _functions4.count(input.substr(pos, 4)) > 0) {
-        Token rv{Token::Type::Function, input.substr(pos, 4)};
-        pos += 4;
-        return rv;
-    }
-
-    // The following variable-sized input must comprise an Integer.
-    std::string number;
-    int base = 10;
-
-    if (input.size() - pos > 2 && input.substr(pos, 2) == "0x") {
-        base = 16;
-        pos += 2;
-    }
-
-    while (pos < input.size() && IsHexOrFloatDigit(input[pos]))
-        number += input[pos++];
-
-    // Reject non-number chars right here.
-    if (number.empty())
-        throw Exception("Invalid input: unexpected char: " + input.substr(pos));
-
-    if (base == 10 && NumberContainsHexChars(number))
-        throw Exception("Invalid input: hex chars in a base/10 number: " + number);
-
-    // Done. We have a well-formed Integer.
-    return Token{Token::Type::Int, number, base};
-}
-
 }  // namespace
 
 #define CASE(v) case Token::Type::v: return #v
@@ -84,6 +46,7 @@ std::string ToString(Token::Type tt) {
     CASE(LShift);
     CASE(RShift);
     CASE(Function);
+    CASE(EoF);
     };
 
     throw Exception("Unrecognized token type: " + std::to_string(static_cast<int>(tt)));
@@ -91,61 +54,132 @@ std::string ToString(Token::Type tt) {
 
 #undef CASE
 
-std::deque<Token> Scan(const std::string& inp) {
-    std::deque<Token> out;
+bool detail::Buffer::Scan(char c, bool eof, Token* t) {
+    switch (state_) {
+    case State::None:
+        DCHECK(buf_.empty());
+        buf_.push_back(c);
+        return FetchQueued(eof, t);
 
-    for (size_t pos = 0; pos < inp.size();) {
-        switch (inp[pos]) {
-            // Eat whitespace
-            case ' ':
-            case '\t':
-            case '\r':
-            case '\n':
-                ++pos;
-                break;
-
-            // Take single-character tokens
-            case '-':
-            case '+':
-            case '*':
-            case '/':
-            case '(':
-            case ')':
-            case '~':
-            case '|':
-            case '&':
-            case '^':
-                out.push_back(Token{Token::Type(inp[pos]), inp.substr(pos, 1)});
-                ++pos;
-                break;
-
-            // Take two-character LShift token: <<
-            case '<':
-                ++pos;
-                if (pos >= inp.size() || inp[pos] != '<')
-                    throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
-                ++pos;
-                out.push_back(Token{Token::Type::LShift, "<<"});
-                break;
-
-            // Take two-character RShift token: >>
-            case '>':
-                ++pos;
-                if (pos >= inp.size() || inp[pos] != '>')
-                    throw Exception("Invalid input: unexpected char: " + inp.substr(pos));
-                ++pos;
-                out.push_back(Token{Token::Type::RShift, ">>"});
-                break;
-
-            // The remaining tokens are:
-            //  - Integer (variable size, prefixes, etc)
-            //  - Function (sin, cos, etc)
-            default:
-                out.push_back(ExtractVariableSizedToken(inp, pos));
+    case State::TwoChar:
+        // Complete a two-char token: <<, >>
+        DCHECK_EQ(buf_.size(), 1);
+        if (buf_.front() == '<' && c == '<') {
+            buf_.clear();
+            state_ = State::None;
+            *t = Token{Token::Type::LShift, "<<"};
+            return true;
         }
+        if (buf_.front() == '>' && c == '>') {
+            buf_.clear();
+            state_ = State::None;
+            *t = Token{Token::Type::RShift, "<<"};
+            return true;
+        }
+        throw Exception("Invalid input: unexpected char: " + std::string(1, c));
+        
+    case State::VarSized:
+        buf_.push_back(c);
+        return VariableSizedToken(eof, t);
     }
 
-    return out;
+    LOG(FATAL) << "Unexpected state: " << static_cast<int>(state_);
+}
+
+bool detail::Buffer::FetchQueued(bool eof, Token* t) {
+    if (buf_.empty())
+        return false;
+
+    DCHECK(buf_.size() == 1 && state_ == State::None)
+        << "Expecting a single terminating char!";
+
+    switch (buf_.front()) {
+    case ' ':
+    case '\t':
+    case '\r':
+    case '\n':
+        // Eat whitespace
+        buf_.erase(buf_.begin(), buf_.begin() + 1);
+        return false;
+
+    case '-':
+    case '+':
+    case '*':
+    case '/':
+    case '(':
+    case ')':
+    case '~':
+    case '|':
+    case '&':
+    case '^':
+        // Take a single-character token.
+        *t = Token{Token::Type(buf_.front()), std::string(1, buf_.front())};
+        buf_.erase(buf_.begin(), buf_.begin() + 1);
+        return true;
+
+    // Start a two-character token: <<, >>
+    case '<':
+    case '>':
+        state_ = State::TwoChar;
+        return false;
+
+    default:
+        state_ = State::VarSized;
+        return VariableSizedToken(eof, t);
+    }
+}
+
+bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
+    DCHECK(state_ == State::VarSized);
+    DCHECK(!buf_.empty());
+
+    // First check for known functions.
+    if (buf_.size() >= 3 && _functions3.count(std::string(&buf_[0], 3)) > 0) {
+        *t = Token{Token::Type::Function, std::string(&buf_[0], 3)};
+        buf_.erase(buf_.begin(), buf_.begin() + 3);
+        return true;
+    }
+    if (buf_.size() >= 4 && _functions4.count(std::string(&buf_[0], 4)) > 0) {
+        *t = Token{Token::Type::Function, std::string(&buf_[0], 4)};
+        buf_.erase(buf_.begin(), buf_.begin() + 4);
+        return true;
+    }
+
+    // The following variable-sized input must comprise an Integer.
+    auto it = buf_.begin();
+    std::string number;
+    int base = 10;
+
+    if (buf_.size() >= 2 && std::string(&buf_[0], 2) == "0x") {
+        base = 16;
+        it += 2;
+    }
+
+    while (it != buf_.end()) {
+        if (IsHexOrFloatDigit(*it))
+            number += *(it++);
+        else
+            break;
+    }
+
+    if (number.empty()) {
+        if (it != buf_.end())
+            throw Exception("Malformed base " + std::to_string(base) + " integer");
+        return false;    
+    }
+
+    if (base == 10 && NumberContainsHexChars(number))
+        throw Exception("Invalid input: hex chars in a base/10 number: " + number);
+
+    // We have a well-formed Integer if we reached EoF or a non-number char.
+    if (eof || it != buf_.end()) {
+        *t = Token{Token::Type::Int, number, base};
+        buf_.erase(buf_.begin(), it);
+        state_ = State::None;
+        return true;
+    }
+
+    return false;
 }
 
 }

@@ -5,233 +5,13 @@
 
 namespace parser {
 
-Result::Result(const std::string& number, int base) {
-    // Initialize the Big integer if we have no decimals.
-    if (number.find('.') == std::string::npos)
-        rbig = cBigNumber(number.data(), base);
-
-    // Initialize the fixed-width integers if we have a Big integer and it fits.
-    size_t last;
-    if (rbig && rbig.value().length() <= 1) {
-        r64 = stoull(number, &last, base);
-        DCHECK_EQ(last, number.size());
-        DCHECK_EQ(rbig.value().toCBNL(), r64.value());
-
-        if (*r64 <= std::numeric_limits<uint32_t>::max()) {
-            r32 = static_cast<uint32_t>(*r64);
-            DCHECK_EQ(*r64, *r32);
-        }
-    }
-
-    // Initialize the floating-point quantity from every decimal.
-    if (base == 10) {
-        double fp64 = stold(number, &last);
-        if (last == number.size())
-            rreal = fp64;
-    }
-}
-
-void Result::ApplyUnaryFunction(const std::string& fname) {
-    if (fname == "abs") {
-        if ((r32 && *r32 < 0) || (rreal && *rreal < 0.0))
-            *this *= Result("-1");
-        return;
-    }
-
-    if (fname == "sin") {
-        if (rreal)
-            *rreal = sin(*rreal);
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        rbig = std::nullopt;
-        return;
-    }
-
-    if (fname == "cos") {
-        if (rreal)
-            *rreal = cos(*rreal);
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        rbig = std::nullopt;
-        return;
-    }
-
-    if (fname == "tan") {
-        if (rreal)
-            *rreal = tan(*rreal);
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        rbig = std::nullopt;
-        return;
-    }
-
-    if (fname == "rad") {
-        if (rreal)
-            *rreal = *rreal / 180.0 * 3.14159265358979323846;
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        rbig = std::nullopt;
-        return;
-    }
-
-    if (fname == "deg") {
-        if (rreal)
-            *rreal = *rreal / 3.14159265358979323846 * 180.0;
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        rbig = std::nullopt;
-        return;
-    }
-
-    if (fname == "sqrt") {
-        if (rreal)
-            *rreal = sqrt(*rreal);
-        r32 = std::nullopt;
-        r64 = std::nullopt;
-        if (rbig)
-            rbig = rbig.value().sqrt();
-        return;
-    }
-
-    throw Exception("Unsupported unary function: " + fname);
-}
-
-Result& Result::operator+=(Result other) {
-    if (r32 && other.r32)
-        *r32 += *other.r32;
-    if (r64 && other.r64)
-        *r64 += *other.r64;
-    if (rreal && other.rreal)
-        *rreal += *other.rreal;
-    if (rbig && other.rbig)
-        *rbig += *other.rbig;
-    return *this;
-}
-
-Result& Result::operator-=(Result other) {
-    if (r32 && other.r32)
-        *r32 -= *other.r32;
-    if (r64 && other.r64)
-        *r64 -= *other.r64;
-    if (rreal && other.rreal)
-        *rreal -= *other.rreal;
-    if (rbig && other.rbig)
-        *rbig -= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator*=(Result other) {
-    if (r32 && other.r32)
-        *r32 *= *other.r32;
-    if (r64 && other.r64)
-        *r64 *= *other.r64;
-    if (rreal && other.rreal)
-        *rreal *= *other.rreal;
-    if (rbig && other.rbig)
-        *rbig *= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator/=(Result other) {
-    if (r32 && other.r32)
-        *r32 /= *other.r32;
-    if (r64 && other.r64)
-        *r64 /= *other.r64;
-    if (rreal && other.rreal)
-        *rreal /= *other.rreal;
-    if (rbig && other.rbig)
-        *rbig /= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator<<=(Result other) {
-    if (r32 && other.r32) {
-        if (*other.r32 < 32)
-            *r32 <<= *other.r32;
-        else
-            r32 = std::nullopt;
-    }
-    if (r64 && other.r64) {
-        if (*other.r64 < 64)
-            *r64 <<= *other.r64;
-        else
-            r64 = std::nullopt;
-    }
-    rreal = std::nullopt;
-    if (rbig && other.rbig)
-        *rbig <<= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator>>=(Result other) {
-    if (r32 && other.r32) {
-        if (*other.r32 < 32)
-            *r32 >>= *other.r32;
-        else
-            r32 = std::nullopt;
-    }
-    if (r64 && other.r64) {
-        if (*other.r64 < 64)
-            *r64 >>= *other.r64;
-        else
-            r64 = std::nullopt;
-    }
-    rreal = std::nullopt;
-    if (rbig && other.rbig)
-        *rbig >>= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator&=(Result other) {
-    if (r32 && other.r32)
-        *r32 &= *other.r32;
-    if (r64 && other.r64)
-        *r64 &= *other.r64;
-    rreal = std::nullopt;
-    if (rbig && other.rbig)
-        *rbig &= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator|=(Result other) {
-    if (r32 && other.r32)
-        *r32 |= *other.r32;
-    if (r64 && other.r64)
-        *r64 |= *other.r64;
-    rreal = std::nullopt;
-    if (rbig && other.rbig)
-        *rbig |= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator^=(Result other) {
-    if (r32 && other.r32)
-        *r32 ^= *other.r32;
-    if (r64 && other.r64)
-        *r64 ^= *other.r64;
-    rreal = std::nullopt;
-    if (rbig && other.rbig)
-        *rbig ^= *other.rbig;
-    return *this;
-}
-
-Result& Result::operator~() {
-    if (r32)
-        *r32 = ~r32.value();
-    if (r64)
-        *r64 = ~*r64;
-    rreal = std::nullopt;
-    if (rbig)
-        *rbig = ~*rbig;
-    return *this;
-}
-
 namespace {
 
 /* 
 --------------------------------------------------------------------------------
   Grammar:
  
+    input       := expression EOF
     expression  := term [ binop term ]
     binop       := MINUS | PLUS | MULT | DIV
     term        := INT
@@ -245,10 +25,11 @@ namespace {
 
 template <typename I>
 struct Context {
-    Context(I begin, I end) : begin_(begin), end_(end) {
+    Context(Scanner<I> scanner) : scanner_(std::move(scanner)) {
         operators_.push(Operator::Sentinel);
     }
     Context(const Context&) = delete;
+    Context(Context&&) = default;
 
     enum class Operator {
         Sentinel,
@@ -267,21 +48,7 @@ struct Context {
         Not         // the highest unary op
     };
 
-    bool Eof() const { return begin_ == end_; }
-
-    Token Consume() {
-        DCHECK(!Eof());
-        auto rv = *begin_;
-        ++begin_;
-        return rv;
-    }
-
-    auto Next() const {
-        DCHECK(!Eof());
-        return begin_->type;
-    }
-
-    bool NextIsBinOp() const {
+    bool NextIsBinOp() {
         static const std::set<Token::Type> bin_ops = {Token::Type::Minus,
                                                       Token::Type::Plus,
                                                       Token::Type::Mult,
@@ -292,18 +59,18 @@ struct Context {
                                                       Token::Type::Xor,
                                                       Token::Type::And};
 
-        return bin_ops.find(Next()) != bin_ops.end();
+        return bin_ops.find(scanner_.Next().type) != bin_ops.end();
     }
 
     Result ConsumeInt() {
-        DCHECK(!Eof() && Next() == Token::Type::Int);
-        Result r(begin_->value, begin_->base);
-        Consume();
+        DCHECK_EQ(scanner_.Next().type, Token::Type::Int);
+        Result r(scanner_.Next().value, scanner_.Next().base);
+        scanner_.Pop();
         return r;
     }
 
     Operator ConsumeBinaryOp() {
-        if (Eof())
+        if (scanner_.Eof())
             throw Exception("Abrupt end of input while parsing a 'binary op'.");
 
         static const std::map<Token::Type, Operator> bin_ops = {
@@ -317,24 +84,24 @@ struct Context {
             {Token::Type::Or, Operator::Or},
             {Token::Type::Xor, Operator::Xor}};
 
-        auto i = bin_ops.find(Next());
+        auto i = bin_ops.find(scanner_.Next().type);
         if (i == bin_ops.end())
             throw Exception("Failed to parse a binary op");
 
-        Consume();
+        scanner_.Pop();
         return i->second;
     }
 
     Operator ConsumeUnaryOp() {
-        if (Eof())
+        if (scanner_.Eof())
             throw Exception("Abrupt end of input while parsing a 'unary op'.");
 
-        switch (Next()) {
+        switch (scanner_.Next().type) {
             case Token::Type::Minus:
-                Consume();
+                scanner_.Pop();
                 return Operator::UMinus;
             case Token::Type::Not:
-                Consume();
+                scanner_.Pop();
                 return Operator::Not;
 
             default:
@@ -428,19 +195,36 @@ struct Context {
         operators_.pop();
     }
 
-    I begin_, end_;
+    Scanner<I> scanner_;
     std::stack<Operator> operators_;
     std::stack<Result> operands_;
 };
 
+template<typename I>
+auto MakeContext(Scanner<I> scanner) {
+    return Context<I>(std::move(scanner));
+}
+
+template <typename I>
+void Input(Context<I>& ctx) {
+    if (ctx.scanner_.Eof())
+        throw Exception("Abrupt end of input while parsing the 'input'.");
+
+    Expression(ctx);
+
+    if (!ctx.scanner_.Eof())
+        throw Exception("Unexpected token after parsing an 'expression': " +
+                        ToString(ctx.scanner_.Next().type));
+}
+
 template <typename I>
 void Expression(Context<I>& ctx) {
-    if (ctx.Eof())
+    if (ctx.scanner_.Eof())
         throw Exception("Abrupt end of input while parsing an 'expression'.");
 
     Term(ctx);
 
-    while (!ctx.Eof() && ctx.NextIsBinOp()) {
+    while (!ctx.scanner_.Eof() && ctx.NextIsBinOp()) {
         ctx.PushOperator(ctx.ConsumeBinaryOp());
         Term(ctx);
     }
@@ -451,10 +235,10 @@ void Expression(Context<I>& ctx) {
 
 template <typename I>
 void Term(Context<I>& ctx) {
-    if (ctx.Eof())
+    if (ctx.scanner_.Eof())
         throw Exception("Abrupt end of input while parsing a 'term'.");
 
-    switch (ctx.Next()) {
+    switch (ctx.scanner_.Next().type) {
         // The terminals
         case Token::Type::Int:
             ctx.operands_.push({ctx.ConsumeInt()});
@@ -469,62 +253,57 @@ void Term(Context<I>& ctx) {
 
         // A sub-expression with parens: ( .... )
         case Token::Type::LParen:
-            ctx.Consume();
+            ctx.scanner_.Pop();
             ctx.PushSentinel();
             Expression(ctx);
-            if (ctx.Eof())
+            if (ctx.scanner_.Eof())
                 throw Exception("Missing RParen");
-            if (ctx.Next() != Token::Type::RParen)
+            if (ctx.scanner_.Next().type != Token::Type::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
-                                ToString(ctx.Next()));
-            ctx.Consume();
+                                ToString(ctx.scanner_.Next().type));
+            ctx.scanner_.Pop();
             ctx.PopSentinel();
             break;
 
         // A function call with parens: xxxx( .... )
         case Token::Type::Function: {
-            Token func = ctx.Consume();
-            if (ctx.Eof())
+            Token func = ctx.scanner_.Next();
+            ctx.scanner_.Pop();
+            if (ctx.scanner_.Eof())
                 throw Exception("Missing LParen");
-            if (ctx.Next() != Token::Type::LParen)
+            if (ctx.scanner_.Next().type != Token::Type::LParen)
                 throw Exception("Unxpected token while expecting LParen: " +
-                                ToString(ctx.Next()));
-            ctx.Consume();
+                                ToString(ctx.scanner_.Next().type));
+            ctx.scanner_.Pop();
             Expression(ctx);
-            if (ctx.Eof())
+            if (ctx.scanner_.Eof())
                 throw Exception("Missing RParen");
-            if (ctx.Next() != Token::Type::RParen)
+            if (ctx.scanner_.Next().type != Token::Type::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
-                                ToString(ctx.Next()));
-            ctx.Consume();
+                                ToString(ctx.scanner_.Next().type));
+            ctx.scanner_.Pop();
             ctx.ApplyUnaryFunction(func);
             break;
         }
 
         default:
             throw Exception("Failed to parse a 'term': unexpected token: " +
-                            ToString(ctx.Next()));
+                            ToString(ctx.scanner_.Next().type));
     }
-}
-
-template <typename I>
-Result Parse(I begin, I end) {
-    Context<I> ctx{begin, end};
-    Expression(ctx);
-    if (!ctx.Eof())
-        throw Exception("Unexpected token(s) at the end: " + ToString(ctx.Next()) +
-                        " : " + ctx.begin_->value);
-    return ctx.operands_.top();
 }
 
 }  // namespace
 
 Result Compute(const std::string& inp) {
-    auto token_stream = Scan(inp);
-    if (token_stream.empty())
+    auto scanner = MakeScanner(inp.begin(), inp.end());
+    if (scanner.Eof())
         return Result();
 
-    return Parse(token_stream.begin(), token_stream.end());
+    auto ctx = MakeContext(std::move(scanner));
+    Input(ctx);
+    DCHECK(ctx.scanner_.Eof());
+    DCHECK_EQ(ctx.operands_.size(), 1);
+    return ctx.operands_.top();
 }
 
 }  // namespace parser
