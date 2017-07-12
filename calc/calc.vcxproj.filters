@@ -55,6 +55,9 @@
     <ClInclude Include="scanner.h">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="tests.h">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="big\Cbignum.cpp">
@@ -91,6 +94,9 @@
       <Filter>Code</Filter>
     </ClCompile>
     <ClCompile Include="result.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="tests.cpp">
       <Filter>Code</Filter>
     </ClCompile>
   </ItemGroup>
