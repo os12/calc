@@ -77,6 +77,7 @@ struct OutControl {
         control->typeface(font);
         control->line_wrapped(true);
         control->editable(false);
+        control->enable_caret();
     }
 
     std::unique_ptr<nana::label> label;
