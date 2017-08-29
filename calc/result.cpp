@@ -96,6 +96,15 @@ void Result::ApplyUnaryFunction(const std::string& fname) {
         return;
     }
 
+    if (fname == "log2") {
+        if (rreal)
+            *rreal = log2(*rreal);
+        r32 = std::nullopt;
+        r64 = std::nullopt;
+        rbig = std::nullopt;
+        return;
+    }
+
     throw Exception("Unsupported unary function: " + fname);
 }
 

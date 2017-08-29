@@ -23,8 +23,8 @@ bool NumberContainsHexChars(const std::string &s) {
     return false;
 }
 
-const std::set<std::string> _functions3 = {"abs", "sin", "cos", "tan", "rad", "deg"};
-const std::set<std::string> _functions4 = {"sqrt"};
+const std::set<std::string> _functions = {
+    "abs", "sin", "cos", "tan", "rad", "deg", "sqrt", "log2"};
 
 }  // namespace
 
@@ -138,14 +138,14 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
     // with ASCII strings.
     {
         // Built-in function names.
-        size_t found_func_len = 0;
-        if (buf_.size() >= 3 && _functions3.count(std::string(&buf_[0], 3)) > 0)
-            found_func_len = 3;
-        if (buf_.size() >= 4 && _functions4.count(std::string(&buf_[0], 4)) > 0)
-            found_func_len = 4;
-        if (found_func_len > 0) {
-            *t = Token{Token::Type::Function, std::string(&buf_[0], found_func_len)};
-            buf_.erase(buf_.begin(), buf_.begin() + found_func_len);
+        auto it = _functions.end();
+        if (buf_.size() >= 3)
+            it = _functions.find(std::string(&buf_[0], 3));
+        if (it == _functions.end() && buf_.size() >= 4)
+            it = _functions.find(std::string(&buf_[0], 4));
+        if (it != _functions.end()) {
+            *t = Token{Token::Type::Function, *it};
+            buf_.erase(buf_.begin(), buf_.begin() + it->size());
             state_ = State::None;
             return true;
         }
