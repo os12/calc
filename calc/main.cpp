@@ -136,14 +136,15 @@ int __stdcall WinMain(
 
     // The div-text
     layout.div(
-        "vert<input>"
+        "<vert"
+        "<input>"
         "<weight=20 <unsigned32label weight=70><unsigned32><signed32label weight=70><signed32>>"
         "<weight=20 <hex32label weight=70><hex32>>"
         "<weight=20 <hex64label weight=70><hex64>>"
         "<weight=20 <reallabel weight=70><real>>"
         "<weight=20 <realexplabel weight=70><realexp>>"
         "<<biglabel weight=70><big>>"
-        "<status weight=20>");
+        "<status weight=20>>");
     
     layout["input"] << input;
 
