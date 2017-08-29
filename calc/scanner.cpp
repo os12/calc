@@ -133,16 +133,25 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
     DCHECK(state_ == State::VarSized);
     DCHECK(!buf_.empty());
 
-    // First check for known functions.
+    // First deal the known functions. The thing here is that we must deal with ASCII
+    // strings.
     if (buf_.size() >= 3 && _functions3.count(std::string(&buf_[0], 3)) > 0) {
         *t = Token{Token::Type::Function, std::string(&buf_[0], 3)};
         buf_.erase(buf_.begin(), buf_.begin() + 3);
+        state_ = State::None;
         return true;
     }
     if (buf_.size() >= 4 && _functions4.count(std::string(&buf_[0], 4)) > 0) {
         *t = Token{Token::Type::Function, std::string(&buf_[0], 4)};
         buf_.erase(buf_.begin(), buf_.begin() + 4);
+        state_ = State::None;
         return true;
+    }
+    if (isalpha(buf_.front())) {
+        if (buf_.size() >= 4)
+            throw Exception("Unrecognized ASCII string starting with '" +
+                            BufAsString().substr(0, 4) + "'");
+        return false;
     }
 
     // The following variable-sized input must comprise an Integer.
@@ -164,7 +173,9 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
 
     if (number.empty()) {
         if (it != buf_.end())
-            throw Exception("Malformed base " + std::to_string(base) + " integer");
+            throw Exception("Malformed base/" + std::to_string(base) +
+                            " integer starting with '" + std::string(1, buf_.front()) +
+                            "'");
         return false;    
     }
 

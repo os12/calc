@@ -59,6 +59,9 @@ public:
 
 private:
     bool VariableSizedToken(bool eof, Token* t);
+    std::string BufAsString() const {
+        return std::string(buf_.begin(), buf_.end());
+    }
 
     enum class State { None, TwoChar, VarSized } state_ = State::None;
     std::deque<char> buf_;

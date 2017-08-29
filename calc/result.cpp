@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "parser.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <glog/logging.h>
 
 namespace parser {
@@ -67,7 +70,7 @@ void Result::ApplyUnaryFunction(const std::string& fname) {
 
     if (fname == "rad") {
         if (rreal)
-            *rreal = *rreal / 180.0 * 3.14159265358979323846;
+            *rreal = *rreal / 180.0 * M_PI;
         r32 = std::nullopt;
         r64 = std::nullopt;
         rbig = std::nullopt;
@@ -76,7 +79,7 @@ void Result::ApplyUnaryFunction(const std::string& fname) {
 
     if (fname == "deg") {
         if (rreal)
-            *rreal = *rreal / 3.14159265358979323846 * 180.0;
+            *rreal = *rreal / M_PI * 180.0;
         r32 = std::nullopt;
         r64 = std::nullopt;
         rbig = std::nullopt;
