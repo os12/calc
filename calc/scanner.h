@@ -60,11 +60,12 @@ public:
 
     bool Empty() const { return buf_.empty(); }
 
-private:
-    bool VariableSizedToken(bool eof, Token* t);
-    std::string BufAsString() const {
+    std::string AsString() const {
         return std::string(buf_.begin(), buf_.end());
     }
+
+private:
+    bool VariableSizedToken(bool eof, Token* t);
 
     enum class State { None, TwoChar, VarSized } state_ = State::None;
     std::deque<char> buf_;
@@ -111,6 +112,10 @@ private:
         }
 
         DCHECK(t.type == Token::Type::EoF);
+
+        // Deal with unfinished var-sized tokens.
+        if (!buf_.Empty())
+            throw Exception("Unrecognized ASCII string: '" + buf_.AsString() + "'");
         return t;
     }
 

@@ -78,7 +78,7 @@ bool detail::Buffer::Scan(char c, bool eof, Token* t) {
             return true;
         }
         throw Exception("Invalid input: unexpected char: " + std::string(1, c));
-        
+
     case State::VarSized:
         buf_.push_back(c);
         return VariableSizedToken(eof, t);
@@ -163,7 +163,7 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
         if (isalpha(buf_.front())) {
             if (buf_.size() >= 4)
                 throw Exception("Unrecognized ASCII string starting with '" +
-                                BufAsString().substr(0, 4) + "'");
+                                AsString().substr(0, 4) + "'");
             return false;
         }
     }
@@ -190,7 +190,7 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
             throw Exception("Malformed base/" + std::to_string(base) +
                             " integer starting with '" + std::string(1, buf_.front()) +
                             "'");
-        return false;    
+        return false;
     }
 
     if (base == 10 && NumberContainsHexChars(number))
