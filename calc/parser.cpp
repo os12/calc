@@ -1,16 +1,22 @@
 #include "stdafx.h"
 #include "parser.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <glog/logging.h>
+
+#define STRINGIFY0(x) #x
+#define STRINGIFY(x) STRINGIFY0(x)
 
 namespace parser {
 
 namespace {
 
-/* 
+/*
 --------------------------------------------------------------------------------
   Grammar:
- 
+
     input       := expression EOF
     expression  := term [ binop term ]
     binop       := MINUS | PLUS | MULT | DIV
@@ -19,6 +25,8 @@ namespace {
                 | NOT expression
                 | LPAREN expression RPAREN
                 | FUNCTION LPAREN expression RPAREN
+                | constatnt
+    constant    := PI
 
 --------------------------------------------------------------------------------
 */
@@ -65,6 +73,14 @@ struct Context {
     Result ConsumeInt() {
         DCHECK_EQ(scanner_.Next().type, Token::Type::Int);
         Result r(scanner_.Next().value, scanner_.Next().base);
+        scanner_.Pop();
+        return r;
+    }
+
+    Result ConsumeConstant() {
+        DCHECK_EQ(scanner_.Next().type, Token::Type::Pi);
+        Result r(STRINGIFY(M_PI));
+        DCHECK(r.rreal);
         scanner_.Pop();
         return r;
     }
@@ -285,6 +301,11 @@ void Term(Context<I>& ctx) {
             ctx.ApplyUnaryFunction(func);
             break;
         }
+
+        // Built-in constants.
+        case Token::Type::Pi:
+            ctx.operands_.push({ctx.ConsumeConstant()});
+            return;
 
         default:
             throw Exception("Failed to parse a 'term': unexpected token: " +

@@ -100,15 +100,20 @@ void Run() {
     // Big numbers
     CheckBig("100000000*10000000", "1000000000000000");
 
-    // functions
+    // Functions
     Check("abs(-1)", 1);
     Check("abs(1)", 1);
     CheckReal("cos(0)", 1);
     CheckReal("cos(0.0)", 1.0);
-    CheckReal("rad(90)", 1.5707963267948966);
+    CheckReal("rad(90)", double(M_PI) / 2.0);
     CheckReal("cos(rad(90))", 0.0);
     CheckReal("cos(rad(90))", 0);
     CheckNEReal("10000000000000000.0 + 200.0", 10000000000000000.0);
+
+    // Constants
+    CheckReal("pi", M_PI);
+    CheckReal("pi/2", M_PI_2);
+    CheckReal("deg(pi/2)", 90.0);
 }
 
 }

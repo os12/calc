@@ -26,8 +26,11 @@ struct Token {
         LShift,
         RShift,
 
-        // Algebraic and trigonomic functions.
+        // Built-in algebraic and trigonomic functions.
         Function,
+
+        // Built-in constants.
+        Pi,
 
         EoF
     };
