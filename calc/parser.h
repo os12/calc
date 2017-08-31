@@ -26,6 +26,7 @@ struct Result {
 
     bool Valid() const { return r64 || r32 || rreal || rbig; }
 
+    // Overload normal arithmetic operators.
     Result& operator+=(Result b);
     Result& operator-=(Result b);
     Result& operator*=(Result b);
@@ -38,7 +39,9 @@ struct Result {
 
     Result& operator~();
 
-    void ApplyUnaryFunction(const std::string& fname);
+    // Apply extra math functions: abs, sin, exp, etc...
+    void ApplyFunction(const std::string& fname);
+    void ApplyFunction(const std::string& fname, const Result& arg);
 };
 
 // The Parser (and the Scanner) throw this object when the input is invalid.

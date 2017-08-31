@@ -6,7 +6,10 @@
 namespace parser {
 
 struct Token {
-    enum class Type {
+    // This enum is scoped to the Token struct and some of the members are used
+    // directly for scanning single-chat tokes.
+    enum Type {
+        // This one is variable-sized.
         Int,
 
         LParen = '(',
@@ -28,6 +31,10 @@ struct Token {
 
         // Built-in algebraic and trigonomic functions.
         Function,
+
+        // Exponent.
+        // ToDo: implement scanning/parsing a binary "pow" function.
+        Pow, // **
 
         // Built-in constants.
         Pi,
@@ -68,6 +75,8 @@ private:
     bool VariableSizedToken(bool eof, Token* t);
 
     enum class State { None, TwoChar, VarSized } state_ = State::None;
+
+    // Contains the input needed for processing multi-char tokens.
     std::deque<char> buf_;
 };
 
@@ -81,7 +90,7 @@ public:
         static_assert(sizeof(I::value_type) == 1, "Expecting an iterator over char!");
     }
 
-    bool Eof() { return Next().type == Token::Type::EoF; }
+    bool Eof() { return Next().type == Token::EoF; }
 
     // Returns the next token (by scanning or from the queue).
     const auto& Next() {
@@ -93,7 +102,7 @@ public:
     // Drops the 'next' token (as it has been consumed by the caller).
     void Pop() {
         DCHECK(!queue_.empty());
-        CHECK(queue_.front().type != Token::Type::EoF);
+        CHECK(queue_.front().type != Token::EoF);
         queue_.pop();
     }
 
@@ -101,8 +110,8 @@ private:
     Token Fetch() {
         DCHECK(queue_.empty());
 
-        Token t(Token::Type::EoF);
-        if (buf_.FetchQueued(false /* eof */, &t))
+        Token t(Token::EoF);
+        if (buf_.FetchQueued(begin_ == end_ /* eof */, &t))
             return t;
 
         while (begin_ != end_) {
@@ -111,7 +120,7 @@ private:
                 return t;
         }
 
-        DCHECK(t.type == Token::Type::EoF);
+        DCHECK(t.type == Token::EoF);
 
         // Deal with unfinished var-sized tokens.
         if (!buf_.Empty())

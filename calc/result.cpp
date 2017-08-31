@@ -34,7 +34,7 @@ Result::Result(const std::string& number, int base) {
     }
 }
 
-void Result::ApplyUnaryFunction(const std::string& fname) {
+void Result::ApplyFunction(const std::string& fname) {
     if (fname == "abs") {
         if ((r32 && *r32 < 0) || (rreal && *rreal < 0.0))
             *this *= Result("-1");
@@ -98,14 +98,32 @@ void Result::ApplyUnaryFunction(const std::string& fname) {
 
     if (fname == "log2") {
         if (rreal)
-            *rreal = log2(*rreal);
-        r32 = std::nullopt;
-        r64 = std::nullopt;
+            *rreal = std::log2(*rreal);
+        if (r32)
+            *r32 = static_cast<uint32_t>(std::log2(*r32));
+        if (r64)
+            *r64 = static_cast<uint64_t>(std::log2(*r64));
         rbig = std::nullopt;
         return;
     }
 
     throw Exception("Unsupported unary function: " + fname);
+}
+
+void Result::ApplyFunction(const std::string& fname, const Result& arg) {
+    if (fname == "pow") {
+        if (rbig && arg.rbig)
+            rbig->pow(*arg.rbig);
+        if (rreal && arg.rreal)
+            *rreal = std::pow(*rreal, *arg.rreal);
+        if (r32 && arg.r32)
+            *r32 = static_cast<uint32_t>(std::pow(*r32, *arg.r32));
+        if (r64 && arg.r64)
+            *r64 = static_cast<int64_t>(std::pow(*r64, *arg.r64));
+        return;
+    }
+
+    throw Exception("Unsupported binary function: " + fname);
 }
 
 Result& Result::operator+=(Result other) {

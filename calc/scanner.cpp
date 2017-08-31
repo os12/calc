@@ -28,7 +28,7 @@ const std::set<std::string> _functions = {
 
 }  // namespace
 
-#define CASE(v) case Token::Type::v: return #v
+#define CASE(v) case Token::v: return #v
 
 std::string ToString(Token::Type tt) {
     switch (tt) {
@@ -45,12 +45,13 @@ std::string ToString(Token::Type tt) {
     CASE(Xor);
     CASE(LShift);
     CASE(RShift);
+    CASE(Pow);
     CASE(Function);
     CASE(Pi);
     CASE(EoF);
     };
 
-    throw Exception("Unrecognized token type: " + std::to_string(static_cast<int>(tt)));
+    LOG(FATAL) << "Unhandled token type: " << static_cast<int>(tt);
 }
 
 #undef CASE
@@ -63,18 +64,29 @@ bool detail::Buffer::Scan(char c, bool eof, Token* t) {
         return FetchQueued(eof, t);
 
     case State::TwoChar:
-        // Complete a two-char token: <<, >>
+        // Complete a two-char token: "<<", ">>", "**" and deal with "*".
         DCHECK_EQ(buf_.size(), 1);
         if (buf_.front() == '<' && c == '<') {
             buf_.clear();
             state_ = State::None;
-            *t = Token{Token::Type::LShift, "<<"};
+            *t = Token{Token::LShift, "<<"};
             return true;
         }
         if (buf_.front() == '>' && c == '>') {
             buf_.clear();
             state_ = State::None;
-            *t = Token{Token::Type::RShift, "<<"};
+            *t = Token{Token::RShift, "<<"};
+            return true;
+        }
+        if (buf_.front() == '*') {
+            state_ = State::None;
+            if (c == '*') {
+                buf_.clear();
+                *t = Token{Token::Pow, "**"};
+            } else {
+                buf_.front() = c;
+                *t = Token{Token::Mult, "*"};
+            }
             return true;
         }
         throw Exception("Invalid input: unexpected char: " + std::string(1, c));
@@ -105,7 +117,6 @@ bool detail::Buffer::FetchQueued(bool eof, Token* t) {
 
     case '-':
     case '+':
-    case '*':
     case '/':
     case '(':
     case ')':
@@ -117,6 +128,11 @@ bool detail::Buffer::FetchQueued(bool eof, Token* t) {
         *t = Token{Token::Type(buf_.front()), std::string(1, buf_.front())};
         buf_.erase(buf_.begin(), buf_.begin() + 1);
         return true;
+
+    // Deal with Mult/Exp as they start with '*'.
+    case '*':
+      state_ = State::TwoChar;
+      return false;
 
     // Start a two-character token: <<, >>
     case '<':
@@ -144,7 +160,7 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
         if (it == _functions.end() && buf_.size() >= 4)
             it = _functions.find(std::string(&buf_[0], 4));
         if (it != _functions.end()) {
-            *t = Token{Token::Type::Function, *it};
+            *t = Token{Token::Function, *it};
             buf_.erase(buf_.begin(), buf_.begin() + it->size());
             state_ = State::None;
             return true;
@@ -152,7 +168,7 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
 
         // Built-in constants.
         if (buf_.size() >= 2 && std::string(&buf_[0], 2) == "pi") {
-            *t = Token{Token::Type::Pi};
+            *t = Token{Token::Pi};
             buf_.erase(buf_.begin(), buf_.begin() + 2);
             state_ = State::None;
             return true;
@@ -198,7 +214,7 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
 
     // We have a well-formed Integer if we reached EoF or a non-number char.
     if (eof || it != buf_.end()) {
-        *t = Token{Token::Type::Int, number, base};
+        *t = Token{Token::Int, number, base};
         buf_.erase(buf_.begin(), it);
         state_ = State::None;
         return true;

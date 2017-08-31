@@ -8,11 +8,18 @@
 
 namespace {
 
-void Check(const std::string& expr, uint32_t expected_result) {
+void Check32(const std::string& expr, uint32_t expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.Valid());
     CHECK(result.r32);
     CHECK_EQ(*result.r32, expected_result);
+}
+
+void Check64(const std::string& expr, uint64_t expected_result) {
+    auto result = parser::Compute(expr);
+    CHECK(result.Valid());
+    CHECK(result.r64);
+    CHECK_EQ(*result.r64, expected_result);
 }
 
 void CheckBig(const std::string& expr, const std::string& expected_result) {
@@ -29,7 +36,7 @@ bool FPEqual(T a, T b) {
 
     if (a == b)
         return true; // shortcut, handles infinities
-    
+
     const auto epsilon = std::numeric_limits<T>::epsilon();
 
     if (a == 0 || b == 0 || diff < std::numeric_limits<T>::min()) {
@@ -73,17 +80,17 @@ void CheckInvalid(const std::string& expr) {
 namespace tests {
 
 void Run() {
-    Check("1", 1);
-    Check("1234", 1234);
-    Check("0x1234", 0x1234);
-    Check("(1+2)*3", 9);
-    Check("1+2*3", 7);
+    Check32("1", 1);
+    Check32("1234", 1234);
+    Check32("0x1234", 0x1234);
+    Check32("(1+2)*3", 9);
+    Check32("1+2*3", 7);
 
     // spaces
-    Check(" 1 + 2 ", 3);
-    Check(" 12 ", 12);
-    Check("12    ", 12);
-    Check("12\t", 12);
+    Check32(" 1 + 2 ", 3);
+    Check32(" 12 ", 12);
+    Check32("12    ", 12);
+    Check32("12\t", 12);
 
     // malformed expressions
     CheckInvalid("12(");
@@ -94,21 +101,25 @@ void Run() {
     CheckInvalid(")12");
 
     // C-style math
-    Check("1<<2", 4);
-    Check("1|2", 3);
+    Check32("1<<2", 4);
+    Check32("1|2", 3);
 
     // Big numbers
     CheckBig("100000000*10000000", "1000000000000000");
 
     // Functions
-    Check("abs(-1)", 1);
-    Check("abs(1)", 1);
+    Check32("abs(-1)", 1);
+    Check32("abs(1)", 1);
     CheckReal("cos(0)", 1);
     CheckReal("cos(0.0)", 1.0);
     CheckReal("rad(90)", double(M_PI) / 2.0);
     CheckReal("cos(rad(90))", 0.0);
     CheckReal("cos(rad(90))", 0);
     CheckNEReal("10000000000000000.0 + 200.0", 10000000000000000.0);
+
+    // Pow.
+    Check32("2**3", 8);
+    Check64("2**32", 0x100000000LL);
 
     // Constants
     CheckReal("pi", M_PI);

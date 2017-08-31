@@ -45,7 +45,7 @@ std::string Parse(std::string input, T& out_controls) {
     }
 
     if (result.rreal) {
-        char buf[64];
+        char buf[1024];
         sprintf_s(buf, sizeof(buf), "%f", *result.rreal);
         get_control("real").control->caption(buf);
         sprintf_s(buf, sizeof(buf), "%e", *result.rreal);
@@ -145,7 +145,7 @@ int __stdcall WinMain(
         "<weight=20 <realexplabel weight=70><realexp>>"
         "<<biglabel weight=70><big>>"
         "<status weight=20>>");
-    
+
     layout["input"] << input;
 
     for (auto& entry : out_controls) {

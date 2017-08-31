@@ -50,35 +50,37 @@ struct Context {
         BMinus,
         Plus,
         Mult,
-        Div,        // the highest binary op
+        Div,
+        Pow,        // the highest binary op
 
         UMinus,
         Not         // the highest unary op
     };
 
     bool NextIsBinOp() {
-        static const std::set<Token::Type> bin_ops = {Token::Type::Minus,
-                                                      Token::Type::Plus,
-                                                      Token::Type::Mult,
-                                                      Token::Type::Div,
-                                                      Token::Type::LShift,
-                                                      Token::Type::RShift,
-                                                      Token::Type::Or,
-                                                      Token::Type::Xor,
-                                                      Token::Type::And};
+        static const std::set<Token::Type> bin_ops = {Token::Minus,
+                                                      Token::Plus,
+                                                      Token::Mult,
+                                                      Token::Div,
+                                                      Token::LShift,
+                                                      Token::RShift,
+                                                      Token::Or,
+                                                      Token::Xor,
+                                                      Token::And,
+                                                      Token::Pow};
 
         return bin_ops.find(scanner_.Next().type) != bin_ops.end();
     }
 
     Result ConsumeInt() {
-        DCHECK_EQ(scanner_.Next().type, Token::Type::Int);
+        DCHECK_EQ(scanner_.Next().type, Token::Int);
         Result r(scanner_.Next().value, scanner_.Next().base);
         scanner_.Pop();
         return r;
     }
 
     Result ConsumeConstant() {
-        DCHECK_EQ(scanner_.Next().type, Token::Type::Pi);
+        DCHECK_EQ(scanner_.Next().type, Token::Pi);
         Result r(STRINGIFY(M_PI));
         DCHECK(r.rreal);
         scanner_.Pop();
@@ -90,15 +92,16 @@ struct Context {
             throw Exception("Abrupt end of input while parsing a 'binary op'.");
 
         static const std::map<Token::Type, Operator> bin_ops = {
-            {Token::Type::Minus, Operator::BMinus},
-            {Token::Type::Plus, Operator::Plus},
-            {Token::Type::Mult, Operator::Mult},
-            {Token::Type::Div, Operator::Div},
-            {Token::Type::LShift, Operator::LShift},
-            {Token::Type::RShift, Operator::RShift},
-            {Token::Type::And, Operator::And},
-            {Token::Type::Or, Operator::Or},
-            {Token::Type::Xor, Operator::Xor}};
+            {Token::Minus, Operator::BMinus},
+            {Token::Plus, Operator::Plus},
+            {Token::Mult, Operator::Mult},
+            {Token::Div, Operator::Div},
+            {Token::LShift, Operator::LShift},
+            {Token::RShift, Operator::RShift},
+            {Token::And, Operator::And},
+            {Token::Or, Operator::Or},
+            {Token::Xor, Operator::Xor},
+            {Token::Pow, Operator::Pow}};
 
         auto i = bin_ops.find(scanner_.Next().type);
         if (i == bin_ops.end())
@@ -113,10 +116,10 @@ struct Context {
             throw Exception("Abrupt end of input while parsing a 'unary op'.");
 
         switch (scanner_.Next().type) {
-            case Token::Type::Minus:
+            case Token::Minus:
                 scanner_.Pop();
                 return Operator::UMinus;
-            case Token::Type::Not:
+            case Token::Not:
                 scanner_.Pop();
                 return Operator::Not;
 
@@ -127,9 +130,9 @@ struct Context {
 
     void ApplyUnaryFunction(Token token) {
         DCHECK_EQ(operands_.size(), 1);
-        DCHECK_EQ(token.type, Token::Type::Function);
+        DCHECK_EQ(token.type, Token::Function);
 
-        operands_.top().ApplyUnaryFunction(token.value);
+        operands_.top().ApplyFunction(token.value);
     }
 
     void PopOperator() {
@@ -183,6 +186,10 @@ struct Context {
                 break;
             case Operator::Xor:
                 operands_.top() ^= other;
+                break;
+            case Operator::Pow:
+                // Convert the binary op into a function.
+                operands_.top().ApplyFunction("pow", other);
                 break;
 
             default:
@@ -256,25 +263,25 @@ void Term(Context<I>& ctx) {
 
     switch (ctx.scanner_.Next().type) {
         // The terminals
-        case Token::Type::Int:
+        case Token::Int:
             ctx.operands_.push({ctx.ConsumeInt()});
             return;
 
         // Unary ops
-        case Token::Type::Minus:
-        case Token::Type::Not:
+        case Token::Minus:
+        case Token::Not:
             ctx.PushOperator(ctx.ConsumeUnaryOp());
             Expression(ctx);
             return;
 
         // A sub-expression with parens: ( .... )
-        case Token::Type::LParen:
+        case Token::LParen:
             ctx.scanner_.Pop();
             ctx.PushSentinel();
             Expression(ctx);
             if (ctx.scanner_.Eof())
                 throw Exception("Missing RParen");
-            if (ctx.scanner_.Next().type != Token::Type::RParen)
+            if (ctx.scanner_.Next().type != Token::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
@@ -282,19 +289,19 @@ void Term(Context<I>& ctx) {
             break;
 
         // A function call with parens: xxxx( .... )
-        case Token::Type::Function: {
+        case Token::Function: {
             Token func = ctx.scanner_.Next();
             ctx.scanner_.Pop();
             if (ctx.scanner_.Eof())
                 throw Exception("Missing LParen");
-            if (ctx.scanner_.Next().type != Token::Type::LParen)
+            if (ctx.scanner_.Next().type != Token::LParen)
                 throw Exception("Unxpected token while expecting LParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
             Expression(ctx);
             if (ctx.scanner_.Eof())
                 throw Exception("Missing RParen");
-            if (ctx.scanner_.Next().type != Token::Type::RParen)
+            if (ctx.scanner_.Next().type != Token::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
@@ -303,7 +310,7 @@ void Term(Context<I>& ctx) {
         }
 
         // Built-in constants.
-        case Token::Type::Pi:
+        case Token::Pi:
             ctx.operands_.push({ctx.ConsumeConstant()});
             return;
 
