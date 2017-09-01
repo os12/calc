@@ -52,11 +52,12 @@ struct Result {
 
 // The Parser (and the Scanner) throw this object when the input is invalid.
 class Exception : public std::runtime_error {
-   public:
+public:
     Exception(std::string msg) : runtime_error(std::move(msg)) {}
 };
 
-// The main entry point - pass a C-style expression and get the result.
+// The main entry point - pass a C-style expression and get the result. Errors are
+// reported via C++ exceptions.
 Result Compute(const std::string &input);
 
-}
+}  // namespace parser

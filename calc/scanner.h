@@ -82,9 +82,14 @@ private:
     std::deque<char> buf_;
 };
 
-}
+}  // namespace detail
 
-// On-demand scanner backed by a STL container.
+// On-demand scanner backed by a STL-style range. The point here is to read tokens on
+// demand.
+//
+// Requirements:
+//  I - a forward iterator
+//
 template <typename I>
 class Scanner {
 public:
@@ -141,8 +146,9 @@ private:
     std::queue<Token> queue_;
 };
 
-template<typename I>
+template <typename I>
 auto MakeScanner(I begin, I end) {
     return Scanner<I>(begin, end);
 }
-}
+
+}  // namespace parser
