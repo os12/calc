@@ -21,6 +21,8 @@ struct Token {
         Mult = '*',
         Div = '/',
 
+        Coma = ',',
+
         // Bitwise ops, mostly binary.
         Not = '~',
         Or = '|',

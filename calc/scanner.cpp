@@ -24,7 +24,7 @@ bool NumberContainsHexChars(const std::string &s) {
 }
 
 const std::set<std::string> _functions = {
-    "abs", "sin", "cos", "tan", "rad", "deg", "sqrt", "log2"};
+    "abs", "sin", "cos", "tan", "rad", "deg", "sqrt", "log2", "pow"};
 
 }  // namespace
 
@@ -48,6 +48,7 @@ std::string ToString(Token::Type tt) {
     CASE(Pow);
     CASE(Function);
     CASE(Pi);
+    CASE(Coma);
     CASE(EoF);
     };
 
@@ -124,6 +125,7 @@ bool detail::Buffer::FetchQueued(bool eof, Token* t) {
     case '|':
     case '&':
     case '^':
+    case ',':
         // Take a single-character token.
         *t = Token{Token::Type(buf_.front()), std::string(1, buf_.front())};
         buf_.erase(buf_.begin(), buf_.begin() + 1);

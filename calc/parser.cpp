@@ -24,8 +24,9 @@ namespace {
                 | MINUS expression
                 | NOT expression
                 | LPAREN expression RPAREN
-                | FUNCTION LPAREN expression RPAREN
+                | FUNCTION LPAREN args RPAREN
                 | constatnt
+    args        := expression [ COMA args ]
     constant    := PI
 
 --------------------------------------------------------------------------------
@@ -128,11 +129,27 @@ struct Context {
         }
     }
 
-    void ApplyUnaryFunction(Token token) {
-        DCHECK_EQ(operands_.size(), 1);
+    void ApplyFunction(Token token) {
         DCHECK_EQ(token.type, Token::Function);
+        DCHECK(!operands_.empty());
 
-        operands_.top().ApplyFunction(token.value);
+        switch (operands_.size()) {
+        case 1:
+            operands_.top().ApplyFunction(token.value);
+            break;
+
+        case 2: {
+            auto arg2 = operands_.top();
+            operands_.pop();
+            operands_.top().ApplyFunction(token.value, arg2);
+            break;
+        }
+
+        default:
+            throw Exception("No known functions take " +
+                            std::to_string(operands_.size()) + " arguments");
+        }
+
     }
 
     void PopOperator() {
@@ -257,6 +274,19 @@ void Expression(Context<I>& ctx) {
 }
 
 template <typename I>
+void Args(Context<I>& ctx) {
+    if (ctx.scanner_.Eof())
+        throw Exception("Abrupt end of input while parsing 'args'.");
+
+    Expression(ctx);
+
+    while (!ctx.scanner_.Eof() && ctx.scanner_.Next().type == Token::Coma) {
+        ctx.scanner_.Pop();
+        Args(ctx);
+    }
+}
+
+template <typename I>
 void Term(Context<I>& ctx) {
     if (ctx.scanner_.Eof())
         throw Exception("Abrupt end of input while parsing a 'term'.");
@@ -298,14 +328,14 @@ void Term(Context<I>& ctx) {
                 throw Exception("Unxpected token while expecting LParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
-            Expression(ctx);
+            Args(ctx);
             if (ctx.scanner_.Eof())
                 throw Exception("Missing RParen");
             if (ctx.scanner_.Next().type != Token::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
-            ctx.ApplyUnaryFunction(func);
+            ctx.ApplyFunction(func);
             break;
         }
 

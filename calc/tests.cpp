@@ -117,9 +117,11 @@ void Run() {
     CheckReal("cos(rad(90))", 0);
     CheckNEReal("10000000000000000.0 + 200.0", 10000000000000000.0);
 
-    // Pow.
+    // Pow. The funky op as well as a normal function.
     Check32("2**3", 8);
     Check64("2**32", 0x100000000LL);
+    Check32("pow(2, 3)", 8);
+    Check32("pow(2,3)-2**3", 0);
 
     // Constants
     CheckReal("pi", M_PI);

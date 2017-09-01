@@ -39,9 +39,15 @@ struct Result {
 
     Result& operator~();
 
-    // Apply extra math functions: abs, sin, exp, etc...
+    //
+    // Apply built-in math functions: abs, sin, exp, etc...
+    //
+
+    // Unary function - all that's needed is the name.
     void ApplyFunction(const std::string& fname);
-    void ApplyFunction(const std::string& fname, const Result& arg);
+
+    // Binary function - takes the second arg.
+    void ApplyFunction(const std::string& fname, const Result& arg2);
 };
 
 // The Parser (and the Scanner) throw this object when the input is invalid.

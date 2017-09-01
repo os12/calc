@@ -110,16 +110,16 @@ void Result::ApplyFunction(const std::string& fname) {
     throw Exception("Unsupported unary function: " + fname);
 }
 
-void Result::ApplyFunction(const std::string& fname, const Result& arg) {
+void Result::ApplyFunction(const std::string& fname, const Result& arg2) {
     if (fname == "pow") {
-        if (rbig && arg.rbig)
-            rbig->pow(*arg.rbig);
-        if (rreal && arg.rreal)
-            *rreal = std::pow(*rreal, *arg.rreal);
-        if (r32 && arg.r32)
-            *r32 = static_cast<uint32_t>(std::pow(*r32, *arg.r32));
-        if (r64 && arg.r64)
-            *r64 = static_cast<int64_t>(std::pow(*r64, *arg.r64));
+        if (rbig && arg2.rbig)
+            rbig->pow(*arg2.rbig);
+        if (rreal && arg2.rreal)
+            *rreal = std::pow(*rreal, *arg2.rreal);
+        if (r32 && arg2.r32)
+            *r32 = static_cast<uint32_t>(std::pow(*r32, *arg2.r32));
+        if (r64 && arg2.r64)
+            *r64 = static_cast<int64_t>(std::pow(*r64, *arg2.r64));
         return;
     }
 
