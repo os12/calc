@@ -16,7 +16,7 @@ bool IsHexOrFloatDigit(char c) {
 
 bool NumberContainsHexChars(const std::string &s) {
     for (auto c : s) {
-        assert(IsHexOrFloatDigit(c));
+        DCHECK(IsHexOrFloatDigit(c));
         if (!isdigit(c) && c != '.')
             return true;
     }
