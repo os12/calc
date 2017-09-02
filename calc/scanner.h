@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <queue>
 
 namespace parser {
 
@@ -46,6 +45,8 @@ struct Token {
 
     explicit Token(Type type, std::string value = "", int base = 10)
         : type(type), value(value), base(base) {}
+
+    bool IsEoF() const { return type == EoF; }
 
     Type type;
     std::string value;
@@ -97,26 +98,40 @@ public:
         static_assert(sizeof(I::value_type) == 1, "Expecting an iterator over char!");
     }
 
-    bool Eof() { return Next().type == Token::EoF; }
+    bool ReachedEof() { return Next().type == Token::EoF; }
 
     // Returns the next token (by scanning or from the queue).
     const auto& Next() {
-        if (queue_.empty())
-            queue_.push(Fetch());
-        return queue_.front();
+        return Get(0);
+    }
+
+    // Returns the Nth token (by scanning or from the queue).
+    const auto& Get(size_t idx) {
+        while (queue_.size() <= idx) {
+            DCHECK(queue_.empty() || !queue_.back().IsEoF());
+            queue_.push_back(Fetch());
+            if (queue_.back().IsEoF())
+                break;
+        }
+
+        if (idx >= queue_.size()) {
+            DCHECK(!queue_.empty() && queue_.back().IsEoF());
+            throw Exception("Reached end of input while trying to fetch token idx=" +
+                            std::to_string(idx) + " at " + ToString(queue_.front().type));
+        }
+
+        return queue_[idx];
     }
 
     // Drops the 'next' token (as it has been consumed by the caller).
     void Pop() {
         DCHECK(!queue_.empty());
         CHECK(queue_.front().type != Token::EoF);
-        queue_.pop();
+        queue_.pop_front();
     }
 
 private:
     Token Fetch() {
-        DCHECK(queue_.empty());
-
         Token t(Token::EoF);
         if (buf_.FetchQueued(begin_ == end_ /* eof */, &t))
             return t;
@@ -143,7 +158,7 @@ private:
     detail::Buffer buf_;
 
     // 0 or 1 tokens. This backs the Next() implementation.
-    std::queue<Token> queue_;
+    std::deque<Token> queue_;
 };
 
 template <typename I>

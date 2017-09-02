@@ -8,6 +8,7 @@
 // This one is much more useful for GLog.
 #undef ERROR
 
+#include <algorithm>
 #include <string>
 #include <deque>
 #include <map>

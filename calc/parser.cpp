@@ -112,7 +112,7 @@ struct Context {
     }
 
     Operator ConsumeBinaryOp() {
-        if (scanner_.Eof())
+        if (scanner_.ReachedEof())
             throw Exception("Abrupt end of input while parsing a 'binary op'.");
 
         static const std::map<Token::Type, Operator> bin_ops = {
@@ -136,7 +136,7 @@ struct Context {
     }
 
     Operator ConsumeUnaryOp() {
-        if (scanner_.Eof())
+        if (scanner_.ReachedEof())
             throw Exception("Abrupt end of input while parsing a 'unary op'.");
 
         switch (scanner_.Next().type) {
@@ -270,24 +270,24 @@ auto MakeContext(Scanner<I> scanner) {
 
 template <typename I>
 void Input(Context<I>& ctx) {
-    if (ctx.scanner_.Eof())
+    if (ctx.scanner_.ReachedEof())
         throw Exception("Abrupt end of input while parsing the 'input'.");
 
     Expression(ctx);
 
-    if (!ctx.scanner_.Eof())
+    if (!ctx.scanner_.ReachedEof())
         throw Exception("Unexpected token after parsing an 'expression': " +
                         ToString(ctx.scanner_.Next().type));
 }
 
 template <typename I>
 void Expression(Context<I>& ctx) {
-    if (ctx.scanner_.Eof())
+    if (ctx.scanner_.ReachedEof())
         throw Exception("Abrupt end of input while parsing an 'expression'.");
 
     Term(ctx);
 
-    while (!ctx.scanner_.Eof() && ctx.NextIsBinOp()) {
+    while (!ctx.scanner_.ReachedEof() && ctx.NextIsBinOp()) {
         ctx.PushOperator(ctx.ConsumeBinaryOp());
         Term(ctx);
     }
@@ -298,12 +298,12 @@ void Expression(Context<I>& ctx) {
 
 template <typename I>
 void Args(Context<I>& ctx) {
-    if (ctx.scanner_.Eof())
+    if (ctx.scanner_.ReachedEof())
         throw Exception("Abrupt end of input while parsing 'args'.");
 
     Expression(ctx);
 
-    while (!ctx.scanner_.Eof() && ctx.scanner_.Next().type == Token::Coma) {
+    while (!ctx.scanner_.ReachedEof() && ctx.scanner_.Next().type == Token::Coma) {
         ctx.scanner_.Pop();
         Args(ctx);
     }
@@ -311,7 +311,7 @@ void Args(Context<I>& ctx) {
 
 template <typename I>
 void Term(Context<I>& ctx) {
-    if (ctx.scanner_.Eof())
+    if (ctx.scanner_.ReachedEof())
         throw Exception("Abrupt end of input while parsing a 'term'.");
 
     switch (ctx.scanner_.Next().type) {
@@ -332,7 +332,7 @@ void Term(Context<I>& ctx) {
             ctx.scanner_.Pop();
             ctx.PushSentinel();
             Expression(ctx);
-            if (ctx.scanner_.Eof())
+            if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing RParen");
             if (ctx.scanner_.Next().type != Token::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
@@ -345,14 +345,14 @@ void Term(Context<I>& ctx) {
         case Token::Function: {
             Token func = ctx.scanner_.Next();
             ctx.scanner_.Pop();
-            if (ctx.scanner_.Eof())
+            if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing LParen");
             if (ctx.scanner_.Next().type != Token::LParen)
                 throw Exception("Unxpected token while expecting LParen: " +
                                 ToString(ctx.scanner_.Next().type));
             ctx.scanner_.Pop();
             Args(ctx);
-            if (ctx.scanner_.Eof())
+            if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing RParen");
             if (ctx.scanner_.Next().type != Token::RParen)
                 throw Exception("Unxpected token while expecting RParen: " +
@@ -377,12 +377,12 @@ void Term(Context<I>& ctx) {
 
 Result Compute(const std::string& inp) {
     auto scanner = MakeScanner(inp.begin(), inp.end());
-    if (scanner.Eof())
+    if (scanner.ReachedEof())
         return Result();
 
     auto ctx = MakeContext(std::move(scanner));
     Input(ctx);
-    DCHECK(ctx.scanner_.Eof());
+    DCHECK(ctx.scanner_.ReachedEof());
     DCHECK_EQ(ctx.operands_.size(), 1);
     return ctx.operands_.top();
 }
