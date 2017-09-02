@@ -40,23 +40,46 @@ struct Context {
     Context(const Context&) = delete;
     Context(Context&&) = default;
 
+    static const int OpMultiplier = 1024;
+
+    // Enum for binary/unary operators sorted by their precedence. The interesting
+    // thing here is that each enum value must me unique in C++, yet pairs like
+    // BMinus/Plus and Mult/Div must have identical values in order to process
+    // the expressions correctly. That is, a Mult/Div pair must be processed from
+    // left to right (a.k.a. left-associative ops). So, let's invent a multiplier for
+    // the values and then strip it in comparisons.
     enum class Operator {
-        Sentinel,
+        Sentinel = 0,
 
-        Or,         // the lowest
-        Xor,
-        And,
-        LShift,
-        RShift,
-        BMinus,
-        Plus,
-        Mult,
-        Div,
-        Pow,        // the highest binary op
+        Or = 1 * OpMultiplier,            // the lowest
+        Xor = 2 * OpMultiplier,
+        And = 3 * OpMultiplier,
+        LShift = 4 * OpMultiplier,
+        RShift = 5 * OpMultiplier,
 
-        UMinus,
-        Not         // the highest unary op
+        BMinus = 6 * OpMultiplier,
+        Plus = 6 * OpMultiplier + 1,
+
+        Mult = 7 * OpMultiplier,
+        Div = 7 * OpMultiplier + 1,
+
+        Pow = 8 * OpMultiplier,         // the highest binary op
+
+        UMinus = 9 * OpMultiplier,
+        Not = 10 * OpMultiplier         // the highest unary op
     };
+
+    // The key "less than" operator. Strips the multiplier along with the
+    // least-significant units in order to make some operators equal.
+    friend bool operator<(Operator op1, Operator op2) {
+        return static_cast<int>(op1) / OpMultiplier <
+               static_cast<int>(op2) / OpMultiplier;
+    }
+
+    // Derive these from the key operator.
+    friend bool operator>=(Operator op1, Operator op2) { return !(op1 < op2); }
+    friend bool operator>(Operator op1, Operator op2) { return op2 < op1; }
+    friend bool operator<=(Operator op1, Operator op2) { return !(op1 > op2); }
 
     bool NextIsBinOp() {
         static const std::set<Token::Type> bin_ops = {Token::Minus,
@@ -218,7 +241,7 @@ struct Context {
     }
 
     void PushOperator(Operator op) {
-        while (operators_.top() > op)
+        while (operators_.top() >= op)
             PopOperator();
         operators_.push(op);
     }
