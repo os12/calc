@@ -46,6 +46,20 @@ struct Token {
         : type(type), value(value), base(base) {}
 
     bool IsEoF() const { return type == EoF; }
+    bool IsBinOp() const {
+        static const std::set<Token::Type> bin_ops = {Token::Minus,
+                                                      Token::Plus,
+                                                      Token::Mult,
+                                                      Token::Div,
+                                                      Token::LShift,
+                                                      Token::RShift,
+                                                      Token::Or,
+                                                      Token::Xor,
+                                                      Token::And,
+                                                      Token::Pow};
+
+        return bin_ops.find(type) != bin_ops.end();
+    }
 
     Type type;
     std::string value;

@@ -3,8 +3,59 @@
 #include <optional>
 #include "big/Cbignum.h"
 #include "scanner.h"
+#include "utils.h"
 
 namespace parser {
+
+const int OpMultiplier = 1024;
+
+// Enum for binary/unary operators sorted by their precedence. The interesting
+// thing here is that each enum value must me unique in C++, yet pairs like
+// BMinus/Plus and Mult/Div must have identical values in order to process
+// the expressions correctly. That is, a Mult/Div pair must be processed from
+// left to right (a.k.a. left-associative ops). So, let's invent a multiplier for
+// the values and then strip it in comparisons.
+enum class Operator {
+    Or      = 1 * OpMultiplier,              // the lowest
+    Xor     = 2 * OpMultiplier,
+    And     = 3 * OpMultiplier,
+    LShift  = 4 * OpMultiplier,
+    RShift  = 5 * OpMultiplier,
+
+    BMinus  = 6 * OpMultiplier,
+    Plus    = 6 * OpMultiplier + 1,
+
+    Mult    = 7 * OpMultiplier,
+    Div     = 7 * OpMultiplier + 1,
+
+    Pow     = 8 * OpMultiplier,             // the highest binary op
+
+    UMinus  = 9 * OpMultiplier,
+    Not     = 10 * OpMultiplier             // the highest unary op
+};
+
+// Returns the operator precedence by stripping the multiplier along with the
+// least-significant units in order to make some operators equal.
+inline int OperatorPrecedence(Operator op) {
+    return static_cast<int>(op) / OpMultiplier;
+}
+
+// The key "less than" operator.
+inline bool operator<(Operator op1, Operator op2) {
+    return OperatorPrecedence(op1) < OperatorPrecedence(op2);
+}
+
+// Derive these from the key operator.
+inline bool operator>=(Operator op1, Operator op2) { return !(op1 < op2); }
+inline bool operator>(Operator op1, Operator op2) { return op2 < op1; }
+inline bool operator<=(Operator op1, Operator op2) { return !(op1 > op2); }
+
+std::string ToString(Operator op);
+
+inline std::ostream& operator<<(std::ostream& s, Operator op) {
+    s << ToString(op);
+    return s;
+}
 
 // The compulation result. Generally, a subset of fields has meaningful values as various
 // operators and functions restrict the full function's (well, it's an expression really)
@@ -19,12 +70,10 @@ struct Result {
 
     explicit Result(const std::string& number, int base = 10);
 
-    std::optional<uint64_t> r64;
-    std::optional<uint32_t> r32;
-    std::optional<double> rreal;
-    std::optional<cBigNumber> rbig;
-
     bool Valid() const { return r64 || r32 || rreal || rbig; }
+
+    // A partial string conversion for debugging.
+    std::string ToString() const;
 
     // Overload normal arithmetic operators.
     Result& operator+=(Result b);
@@ -39,6 +88,8 @@ struct Result {
 
     Result& operator~();
 
+    friend bool operator==(const Result& a, const Result& b);
+
     //
     // Apply built-in math functions: abs, sin, exp, etc...
     //
@@ -48,7 +99,65 @@ struct Result {
 
     // Binary function - takes the second arg.
     void ApplyFunction(const std::string& fname, const Result& arg2);
+
+    std::optional<uint32_t> r32;
+    std::optional<uint64_t> r64;
+    std::optional<double> rreal;
+    std::optional<cBigNumber> rbig;
 };
+
+inline std::ostream& operator<<(std::ostream& s, const Result& r) {
+    s << r.ToString();
+    return s;
+}
+
+namespace ast {
+
+// These structures comprise the Abstract Syntax Tree that is built during parsing.
+struct Node {
+    virtual ~Node() = default;
+
+    virtual Result Compute(int indent) = 0;
+
+    static std::string Indent(int indent) {
+        return std::string(indent, '\t');
+    }
+};
+
+struct Terminal : Node {
+    Terminal(Result r) : result(std::move(r)) {}
+    Result result;
+
+    Result Compute(int indent) override;
+};
+
+struct BinaryOp : Node {
+    BinaryOp(Operator op, std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : op(op), left(move(left)), right(move(right)) {}
+    Operator op;
+    std::unique_ptr<Node> left, right;
+
+    Result Compute(int indent) override;
+};
+
+struct UnaryOp : Node {
+    UnaryOp(Operator op, std::unique_ptr<Node> value) : op(op), value(move(value)) {}
+    Operator op;
+    std::unique_ptr<Node> value;
+
+    Result Compute(int indent) override;
+};
+
+struct Function : Node {
+    Function(Token token, std::list<std::unique_ptr<Node>> args)
+        : token(token), args(move(args)) {}
+    Token token;
+    std::list<std::unique_ptr<Node>> args;
+
+    Result Compute(int indent) override;
+};
+
+}  // namespace ast
 
 // The Parser (and the Scanner) throw this object when the input is invalid.
 class Exception : public std::runtime_error {
@@ -56,8 +165,22 @@ public:
     Exception(std::string msg) : runtime_error(std::move(msg)) {}
 };
 
-// The main entry point - pass a C-style expression and get the result. Errors are
-// reported via C++ exceptions.
-Result Compute(const std::string &input);
+// The main parser interface:
+//  - takes a C-style expression
+//  - returns the AST
+// Errors are reported via C++ exceptions.
+std::unique_ptr<ast::Node> Parse(const std::string &input);
+
+// Helper function to call Compute() on the AST and deal with empty input.
+inline Result Compute(const std::string& input) {
+    auto ast = Parse(input);
+    if (ast == nullptr)
+        return Result();
+
+#if defined(_DEBUG)
+    base::OutputDebugLine("Walking AST for exression: " + input);
+#endif
+    return ast->Compute(0);
+}
 
 }  // namespace parser

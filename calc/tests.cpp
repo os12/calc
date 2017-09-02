@@ -29,40 +29,16 @@ void CheckBig(const std::string& expr, const std::string& expected_result) {
     CHECK(result.rbig.value().toa(buf) == expected_result);
 }
 
-template<typename T>
-bool FPEqual(T a, T b) {
-    // Adapted from http://floating-point-gui.de/errors/comparison/
-    const T diff = fabs(a - b);
-
-    if (a == b)
-        return true; // shortcut, handles infinities
-
-    const auto epsilon = std::numeric_limits<T>::epsilon();
-
-    if (a == 0 || b == 0 || diff < std::numeric_limits<T>::min()) {
-        // Our a or b is zero or both are extremely close to it relative error is less
-        // meaningful here.
-
-        // This does not make sense.
-        // return diff < epsilon * std::numeric_limits<T>::min();
-        return diff < epsilon;
-    } else {
-        // Use relative error
-        return diff / std::min((fabs(a) + fabs(b)), std::numeric_limits<T>::max()) <
-               epsilon;
-    }
-}
-
 void CheckReal(const std::string& expr, double expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.rreal);
-    CHECK(FPEqual(*result.rreal, expected_result));
+    CHECK(utils::FPEqual(*result.rreal, expected_result));
 }
 
 void CheckNEReal(const std::string& expr, double expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.rreal);
-    CHECK(!FPEqual(*result.rreal, expected_result));
+    CHECK(!utils::FPEqual(*result.rreal, expected_result));
 }
 
 void CheckInvalid(const std::string& expr) {
@@ -87,7 +63,12 @@ void Run() {
     Check32("1+2*3", 7);
     Check32("2*3+1", 7);
     Check32("1-(2+3)", -4);
-    Check32("1-2+3", 2);
+    Check32("-1+1", 0);
+    Check32("1+2+3+4", 10);
+    Check32("10-2-3", 5);
+
+    Check32("1--1", 2);
+    CheckReal("1.0--1.0", 2.0);
 
     // spaces
     Check32(" 1 + 2 ", 3);
@@ -123,6 +104,8 @@ void Run() {
     // Pow. The funky op as well as a normal function.
     Check32("2**3", 8);
     Check64("2**32", 0x100000000LL);
+    Check32("2**3 + 1", 9);
+    Check32("1 + 2**3", 9);
     Check32("pow(2, 3)", 8);
     Check32("pow(2,3)-2**3", 0);
 

@@ -20,10 +20,8 @@ Result::Result(const std::string& number, int base) {
         DCHECK_EQ(last, number.size());
         DCHECK_EQ(rbig.value().toCBNL(), r64.value());
 
-        if (*r64 <= std::numeric_limits<uint32_t>::max()) {
-            r32 = static_cast<uint32_t>(*r64);
-            DCHECK_EQ(*r64, *r32);
-        }
+        r32 = stoul(number, &last, base);
+        DCHECK_EQ(last, number.size());
     }
 
     // Initialize the floating-point quantity from every decimal.
@@ -32,6 +30,20 @@ Result::Result(const std::string& number, int base) {
         if (last == number.size())
             rreal = fp64;
     }
+}
+
+std::string Result::ToString() const {
+    if (!Valid()) return "Invalid!";
+
+    // Pick the shorter value as this is used only for debugging AST.
+    if (r32) return std::to_string(*r32);
+    if (r64) return std::to_string(*r64);
+    if (rbig) {
+        cBigString buf;
+        return rbig->toa(buf);
+    }
+
+    return std::to_string(*rreal);
 }
 
 void Result::ApplyFunction(const std::string& fname) {
@@ -256,4 +268,30 @@ Result& Result::operator~() {
     return *this;
 }
 
+#define CHECK_FIELD(name)                 \
+    do {                                  \
+        if (a.name != a.name)             \
+            return false;                 \
+        if (a.name && *a.name != *b.name) \
+            return false;                 \
+    } while (0)
+
+bool operator==(const Result& a, const Result& b) {
+    // The empty objects are considered equal.
+    if (!a.Valid() && !b.Valid())
+        return true;
+
+    CHECK_FIELD(r32);
+    CHECK_FIELD(r64);
+    CHECK_FIELD(rbig);
+
+    if (a.rreal != b.rreal)
+        return false;
+    if (a.rreal && !utils::FPEqual(*a.rreal, *b.rreal))
+        return false;
+
+    return true;
+}
+
+#undef CHECK_FIELD
 }  // namespace parser

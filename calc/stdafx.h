@@ -9,8 +9,11 @@
 #undef ERROR
 
 #include <algorithm>
-#include <string>
 #include <deque>
+#include <functional>
+#include <list>
 #include <map>
+#include <memory>
 #include <set>
 #include <stack>
+#include <string>
