@@ -33,8 +33,7 @@ struct Token {
         // Built-in algebraic and trigonomic functions.
         Function,
 
-        // Exponent.
-        // ToDo: implement scanning/parsing a binary "pow" function.
+        // Exponent. It also exists as a binary function "pow".
         Pow, // **
 
         // Built-in constants.
