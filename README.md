@@ -15,7 +15,13 @@ The following libraries are configured as Git sub-modules and built during compi
   * Implements logging and assertions
 
 ## The build process
+First get the code:
+* ```https://github.com/os12/calc.git```
+* ```git submodule update```
+
 The application currently builds on Windows. Get Visual Studio 2017 “Community” edition from [here](https://www.visualstudio.com/), open `calc.sln` and build it. 
+
+Nana support both Visual Studio solutions as well as CMake, yet I need to see whether that later works on Windows. If so, creating ```CMakeLists.txt``` for the calculator code should be trivial.
 
 ## Screen shot
 ![Screen shot](https://github.com/os12/calc/raw/master/docs/calc.png)
