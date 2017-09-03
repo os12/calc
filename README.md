@@ -18,7 +18,7 @@ The following libraries are configured as Git sub-modules and built during compi
 * [glog](https://github.com/google/glog)
   * Implements logging and assertions
 
-Also, the code includes a [big number](http://www.imach.uran.ru/cbignum) library which implements arbitrary precision integers. So, things like these compute: ```10**100``` and the result is presented in the "big" box in the UI.
+Also, the code includes a [big number](http://www.imach.uran.ru/cbignum) library which implements arbitrary-precision integers and operations on them. So, things like these compute: ```10**100``` and the result is presented in the "big" box in the UI.
 
 ## The build process
 First get the code:
