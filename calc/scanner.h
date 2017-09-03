@@ -4,6 +4,7 @@
 
 namespace parser {
 
+// A token. The Scanner (see below) produces a stream of these.
 struct Token {
     // This enum is scoped to the Token struct and some of the members are used
     // directly for scanning single-chat tokes.

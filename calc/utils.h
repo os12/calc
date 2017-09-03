@@ -11,9 +11,10 @@ void OutputDebugLine(const std::string& line);
 
 namespace utils {
 
+// Floating point equality function adapted from:
+//  http://floating-point-gui.de/errors/comparison/
 template <typename T>
 bool FPEqual(T a, T b) {
-    // Adapted from http://floating-point-gui.de/errors/comparison/
     const T diff = fabs(a - b);
 
     if (a == b)
