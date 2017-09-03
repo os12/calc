@@ -16,7 +16,8 @@ The following libraries are configured as Git sub-modules and built during compi
 
 ## The build process
 First get the code:
-* ```https://github.com/os12/calc.git```
+* ```git clone https://github.com/os12/calc.git```
+* ```cd calc```
 * ```git submodule update```
 
 The application currently builds on Windows. Get Visual Studio 2017 “Community” edition from [here](https://www.visualstudio.com/), open `calc.sln` and build it. 
