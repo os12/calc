@@ -1,5 +1,5 @@
 ## TL;DR
-This is a small [bc-style](https://www.gnu.org/software/bc/) calculator written in portable, modern C++. It takes a C-style expression with the following operators: plus, minus, multiple, divide, bit shifts, and/or/xor as well as a few built-in functions: sin/cos/abs/log/pow.
+This is a small [bc](https://www.gnu.org/software/bc/)-style calculator written in portable, modern C++. It takes a C-style expression with the following operators: plus, minus, multiple, divide, bit shifts, and/or/xor as well as a few built-in functions: sin/cos/abs/log/pow.
 
 ```(1 << 31) + 1024 | 0x0001```
 
