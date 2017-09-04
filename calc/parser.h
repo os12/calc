@@ -117,35 +117,42 @@ namespace ast {
 struct Node {
     virtual ~Node() = default;
 
-    virtual Result Compute(int indent) = 0;
+    Result Compute(int indent);
 
-    static std::string Indent(int indent) {
-        return std::string(indent, '\t');
-    }
+protected:
+    virtual Result DoCompute(int indent) = 0;
+    virtual std::string Print() const = 0;
 };
 
 struct Terminal : Node {
-    Terminal(Result r) : result(std::move(r)) {}
-    Result result;
+    Terminal(Result value) : value(std::move(value)) {}
+    Result value;
 
-    Result Compute(int indent) override;
+protected:
+    Result DoCompute(int indent) override;
+    std::string Print() const override { return "Terminal: " + value.ToString(); };
 };
 
 struct BinaryOp : Node {
-    BinaryOp(Operator op, std::unique_ptr<Node> left, std::unique_ptr<Node> right)
-        : op(op), left(move(left)), right(move(right)) {}
+    BinaryOp(Operator op, std::unique_ptr<Node> left_ast, std::unique_ptr<Node> right_ast)
+        : op(op), left_ast(std::move(left_ast)), right_ast(std::move(right_ast)) {}
     Operator op;
-    std::unique_ptr<Node> left, right;
+    std::unique_ptr<Node> left_ast, right_ast;
 
-    Result Compute(int indent) override;
+protected:
+    Result DoCompute(int indent) override;
+    std::string Print() const override { return "BinaryOp: " + ToString(op); };
 };
 
 struct UnaryOp : Node {
-    UnaryOp(Operator op, std::unique_ptr<Node> value) : op(op), value(move(value)) {}
+    UnaryOp(Operator op, std::unique_ptr<Node> arg_ast)
+        : op(op), arg_ast(std::move(arg_ast)) {}
     Operator op;
-    std::unique_ptr<Node> value;
+    std::unique_ptr<Node> arg_ast;
 
-    Result Compute(int indent) override;
+protected:
+    Result DoCompute(int indent) override;
+    std::string Print() const override { return "UnaryOp: " + ToString(op); };
 };
 
 struct Function : Node {
@@ -154,7 +161,9 @@ struct Function : Node {
     Token token;
     std::list<std::unique_ptr<Node>> args;
 
-    Result Compute(int indent) override;
+protected:
+    Result DoCompute(int indent) override;
+    std::string Print() const override { return "Function: " + token.value; };
 };
 
 }  // namespace ast

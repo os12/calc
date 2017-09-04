@@ -259,16 +259,19 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 
 namespace ast {
 
-Result Terminal::Compute(int indent) {
-    base::OutputDebugLine(Indent(indent) + "Terminal: " + result.ToString());
-    DCHECK(result.Valid());
-    return result;
+Result Node::Compute(int indent) {
+    base::OutputDebugLine(std::string(indent, '\t') + Print());
+    return DoCompute(indent);
 }
 
-Result BinaryOp::Compute(int indent) {
-    base::OutputDebugLine(Indent(indent) + "bin op: " + ToString(op));
-    auto lresult = left->Compute(indent + 1);
-    auto rresult = right->Compute(indent + 1);
+Result Terminal::DoCompute(int indent) {
+    DCHECK(value.Valid());
+    return value;
+}
+
+Result BinaryOp::DoCompute(int indent) {
+    auto lresult = left_ast->Compute(indent + 1);
+    auto rresult = right_ast->Compute(indent + 1);
 
     // Deal with binary ops.
     switch (op) {
@@ -309,9 +312,8 @@ Result BinaryOp::Compute(int indent) {
     return lresult;
 }
 
-Result UnaryOp::Compute(int indent) {
-    base::OutputDebugLine(Indent(indent) + "unary op: " + ToString(op));
-    auto r = value->Compute(indent + 1);
+Result UnaryOp::DoCompute(int indent) {
+    auto r = arg_ast->Compute(indent + 1);
 
     // Deal with unary operators.
     switch (op) {
@@ -326,9 +328,7 @@ Result UnaryOp::Compute(int indent) {
     throw Exception("Unexpected unary op: " + ToString(op));
 }
 
-Result Function::Compute(int indent) {
-    base::OutputDebugLine(Indent(indent) + "function call: " + token.value);
-
+Result Function::DoCompute(int indent) {
     std::deque<Result> results;
     for (const auto& arg : args)
         results.push_back(arg->Compute(indent + 1));

@@ -103,7 +103,7 @@ private:
 // demand.
 //
 // Requirements:
-//  I - a forward iterator
+//  I - a forward iterator over a sequence of "char" objects
 //
 template <typename I>
 class Scanner {
@@ -166,7 +166,8 @@ private:
 
     // The remaining range. Note, 'begin_' keeps moving forward towards the immutable
     // 'end_'.
-    I begin_, end_;
+    I begin_;
+    const I end_;
 
     // Cached input bytes. This is needed for processing multi-byte token.
     detail::Buffer buf_;
