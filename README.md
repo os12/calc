@@ -64,9 +64,9 @@ BinaryOp: BMinus
 * Expression: `1--1`
 ```
 BinaryOp: BMinus
-	   Terminal: 1
-	   UnaryOp: UMinus
-		      Terminal: 1
+	Terminal: 1
+	UnaryOp: UMinus
+		Terminal: 1
 ```
   
 ## The build process
