@@ -1,4 +1,4 @@
-## TL;DR
+# TL;DR
 This is a small [bc](https://www.gnu.org/software/bc/)-style calculator written in portable, modern C++. It takes a C-style expression with the following operators: plus, minus, multiple, divide, bit shifts, and/or/xor as well as a few built-in functions: sin/cos/abs/log/pow.
 
 ```(1 << 31) + 1024 | 0x0001```
@@ -7,7 +7,7 @@ This is a small [bc](https://www.gnu.org/software/bc/)-style calculator written 
 
 ```cos(rad(90))```
 
-## Details
+# Details
 The code parses C-style expressions using a hand-written [recursive descent parser](https://en.wikipedia.org/wiki/Recursive_descent_parser) and builds and the [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree). The AST is then walked to compute the result which is presented in UI in a human-readable form. Specifically, several result forms are computed at once, in order to model the abstract C machine: 32-bin integer (presented as signed and unsigned), 64-bit integer, big number and a floating-point quantity (double).
 
 ## Dependencies
