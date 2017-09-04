@@ -60,6 +60,18 @@ BinaryOp: BMinus
 		Terminal: 1
 ```
 
+#### The scanner
+The scanner is a templated class that operates on a STL-style range defined by two iterators. It produces the following token types on demand:
+* `Int` a variable-sized integer accepted in various C-style formats
+* Parentheses: `LParen`, `RParen`
+* Arithmetic ops, mostly binary: `Minus`, `Plus`, `Mult`, `Div`
+* `Coma`
+* Bitwise ops, mostly binary: `Not`, `Or`, `And`, `Xor`, `LShift`, `RShift`
+* Built-in algebraic and trigonomic functions: `Function`
+* Exponent op (It also exists as a binary function "pow"): `Pow`: `**`
+* Built-in constants: `Pi`
+* End of file: `EoF`
+
 ## Dependencies
 The following libraries are configured as Git sub-modules and built during compilation:
 * [nana](https://github.com/cnjinhao/nana)
