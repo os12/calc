@@ -2,6 +2,6 @@
 
 namespace tests {
 
-void Run();
+bool Run();
 
 }

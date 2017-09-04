@@ -93,10 +93,8 @@ int __stdcall WinMain(
     FLAGS_log_dir = "./";
     google::InitGoogleLogging("calc.exe");
 
-#if defined(_DEBUG)
     // Forcefully run every test in the debug builds.
-    tests::Run();
-#endif
+    DCHECK(tests::Run());
 
     // The form object. It creates a window, but it is invisible by default.
     nana::form form;

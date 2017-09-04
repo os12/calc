@@ -55,7 +55,7 @@ void CheckInvalid(const std::string& expr) {
 
 namespace tests {
 
-void Run() {
+bool Run() {
     Check32("1", 1);
     Check32("1234", 1234);
     Check32("0x1234", 0x1234);
@@ -113,6 +113,8 @@ void Run() {
     CheckReal("pi", M_PI);
     CheckReal("pi/2", M_PI_2);
     CheckReal("deg(pi/2)", 90.0);
+
+    return true;
 }
 
 }
