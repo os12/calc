@@ -20,6 +20,24 @@ The following libraries are configured as Git sub-modules and built during compi
 
 Also, the code includes a [big number](http://www.imach.uran.ru/cbignum) library which implements arbitrary-precision integers and operations on them. So, things like these compute: ```10**100``` and the result is presented in the "big" box in the UI.
 
+#### The grammar
+
+Here is the language grammar in something very close to the [BNF](https://en.wikipedia.org/wiki/Backus–Naur_form):
+
+```
+<input>       ::= expression EOF
+<expression>  ::= term [ binop term ]
+<binop>       ::= MINUS | PLUS | MULT | DIV | LSHIFT | RSHIFT | POW | AND | OR | XOR
+<term>        ::= INT
+              | MINUS <term>
+              | NOT <term>
+              | LPAREN <expression> RPAREN
+              | FUNCTION LPAREN <args> RPAREN
+              | <constatnt>
+<constant>    ::= PI
+<args>        := <expression> [ COMA <args> ]
+```
+
 ## The build process
 First get the code:
 * ```git clone https://github.com/os12/calc.git```
