@@ -7,56 +7,6 @@
 
 namespace parser {
 
-const int OpMultiplier = 1024;
-
-// Enum for binary/unary operators sorted by their precedence. The interesting
-// thing here is that each enum value must me unique in C++, yet pairs like
-// BMinus/Plus and Mult/Div must have identical values in order to process
-// the expressions correctly. That is, a Mult/Div pair must be processed from
-// left to right (a.k.a. left-associative ops). So, let's invent a multiplier for
-// the values and then strip it in comparisons.
-enum class Operator {
-    Or      = 1 * OpMultiplier,              // the lowest
-    Xor     = 2 * OpMultiplier,
-    And     = 3 * OpMultiplier,
-    LShift  = 4 * OpMultiplier,
-    RShift  = 5 * OpMultiplier,
-
-    BMinus  = 6 * OpMultiplier,
-    Plus    = 6 * OpMultiplier + 1,
-
-    Mult    = 7 * OpMultiplier,
-    Div     = 7 * OpMultiplier + 1,
-
-    Pow     = 8 * OpMultiplier,             // the highest binary op
-
-    UMinus  = 9 * OpMultiplier,
-    Not     = 10 * OpMultiplier             // the highest unary op
-};
-
-// Returns the operator precedence by stripping the multiplier along with the
-// least-significant units in order to make some operators equal.
-inline int OperatorPrecedence(Operator op) {
-    return static_cast<int>(op) / OpMultiplier;
-}
-
-// The key "less than" operator.
-inline bool operator<(Operator op1, Operator op2) {
-    return OperatorPrecedence(op1) < OperatorPrecedence(op2);
-}
-
-// Derive these from the key operator.
-inline bool operator>=(Operator op1, Operator op2) { return !(op1 < op2); }
-inline bool operator>(Operator op1, Operator op2) { return op2 < op1; }
-inline bool operator<=(Operator op1, Operator op2) { return !(op1 > op2); }
-
-std::string ToString(Operator op);
-
-inline std::ostream& operator<<(std::ostream& s, Operator op) {
-    s << ToString(op);
-    return s;
-}
-
 // The compulation result. Generally, a subset of fields has meaningful values as various
 // operators and functions restrict the full function's (well, it's an expression really)
 // range.
@@ -142,10 +92,12 @@ protected:
 
 // BinaryOp: represents a binary operator such as "*" or "<<".
 struct BinaryOp : Node {
-    BinaryOp(Operator op, std::unique_ptr<Node> left_ast, std::unique_ptr<Node> right_ast)
+    BinaryOp(detail::Operator op,
+             std::unique_ptr<Node> left_ast,
+             std::unique_ptr<Node> right_ast)
         : op(op), left_ast(std::move(left_ast)), right_ast(std::move(right_ast)) {}
 
-    const Operator op;
+    const detail::Operator op;
     const std::unique_ptr<Node> left_ast, right_ast;
 
 protected:
@@ -155,10 +107,10 @@ protected:
 
 // UnaryUp: represents a unary operator such as "-".
 struct UnaryOp : Node {
-    UnaryOp(Operator op, std::unique_ptr<Node> arg_ast)
+    UnaryOp(detail::Operator op, std::unique_ptr<Node> arg_ast)
         : op(op), arg_ast(std::move(arg_ast)) {}
 
-    const Operator op;
+    const detail::Operator op;
     const std::unique_ptr<Node> arg_ast;
 
 protected:
@@ -199,9 +151,7 @@ inline Result Compute(const std::string& input) {
     if (ast == nullptr)
         return Result();
 
-#if defined(_DEBUG)
     base::OutputDebugLine("Walking AST for exression: " + input);
-#endif
     return ast->Compute(0);
 }
 

@@ -10,33 +10,10 @@
 #define STRINGIFY(x) STRINGIFY0(x)
 
 namespace parser {
-
 namespace {
 
-int GetBinOpPrecedence(const Token& t) {
-    DCHECK(t.IsBinOp());
-
-    static const std::map<Token::Type, Operator> bin_ops = {
-        {Token::Minus, Operator::BMinus},
-        {Token::Plus, Operator::Plus},
-        {Token::Mult, Operator::Mult},
-        {Token::Div, Operator::Div},
-        {Token::LShift, Operator::LShift},
-        {Token::RShift, Operator::RShift},
-        {Token::And, Operator::And},
-        {Token::Or, Operator::Or},
-        {Token::Xor, Operator::Xor},
-        {Token::Pow, Operator::Pow}};
-
-    auto i = bin_ops.find(t.type);
-    DCHECK(i != bin_ops.end());
-
-    return OperatorPrecedence(i->second);
-}
-
-// This is the central structure that holds the parsing context:
-//  - the scanner
-//  - oprator and operand stacks
+// This is the central structure that holds the parsing context (well, the Scanner
+// instance) and provides the ConsumeXxxx() methods needed for building the AST.
 template <typename I>
 struct Context {
     Context(Scanner<I> scanner) : scanner_(std::move(scanner)) {}
@@ -58,41 +35,28 @@ struct Context {
         return r;
     }
 
-    Operator ConsumeBinaryOp() {
+    detail::Operator ConsumeBinaryOp() {
         if (scanner_.ReachedEof())
             throw Exception("Abrupt end of input while parsing a 'binary op'.");
 
-        static const std::map<Token::Type, Operator> bin_ops = {
-            {Token::Minus, Operator::BMinus},
-            {Token::Plus, Operator::Plus},
-            {Token::Mult, Operator::Mult},
-            {Token::Div, Operator::Div},
-            {Token::LShift, Operator::LShift},
-            {Token::RShift, Operator::RShift},
-            {Token::And, Operator::And},
-            {Token::Or, Operator::Or},
-            {Token::Xor, Operator::Xor},
-            {Token::Pow, Operator::Pow}};
-
-        auto i = bin_ops.find(scanner_.Next().type);
-        if (i == bin_ops.end())
-            throw Exception("Failed to parse a binary op");
+        DCHECK(scanner_.Next().IsBinOp());
+        auto op = scanner_.Next().GetBinOp();
 
         scanner_.Pop();
-        return i->second;
+        return op;
     }
 
-    Operator ConsumeUnaryOp() {
+    detail::Operator ConsumeUnaryOp() {
         if (scanner_.ReachedEof())
             throw Exception("Abrupt end of input while parsing a 'unary op'.");
 
         switch (scanner_.Next().type) {
             case Token::Minus:
                 scanner_.Pop();
-                return Operator::UMinus;
+                return detail::Operator::UMinus;
             case Token::Not:
                 scanner_.Pop();
-                return Operator::Not;
+                return detail::Operator::Not;
 
             default:
                 throw Exception("Failed to parse a unary op");
@@ -141,17 +105,18 @@ std::unique_ptr<ast::Node> ExpressionHelper(Context<I>& ctx,
                                             std::unique_ptr<ast::Node> left,
                                             int min_precedence) {
     auto lookahead = ctx.scanner_.Next();
-    while (lookahead.IsBinOp() && GetBinOpPrecedence(lookahead) >= min_precedence) {
+    while (lookahead.IsBinOp() &&
+           OperatorPrecedence(lookahead.GetBinOp()) >= min_precedence) {
         auto op = ctx.ConsumeBinaryOp();
         auto right = Term(ctx);
         lookahead = ctx.scanner_.Next();
 
         while (lookahead.IsBinOp() &&
-               GetBinOpPrecedence(lookahead) > OperatorPrecedence(op)
+               OperatorPrecedence(lookahead.GetBinOp()) > OperatorPrecedence(op)
                /* OR lookahad is a right-associative operator
                  whose precedence is equal to op's */) {
-            right =
-                ExpressionHelper(ctx, std::move(right), GetBinOpPrecedence(lookahead));
+            right = ExpressionHelper(
+                ctx, std::move(right), OperatorPrecedence(lookahead.GetBinOp()));
             lookahead = ctx.scanner_.Next();
         }
 
@@ -275,34 +240,34 @@ Result BinaryOp::DoCompute(int indent) {
 
     // Deal with binary ops.
     switch (op) {
-    case Operator::BMinus:
+    case detail::Operator::BMinus:
         lresult -= rresult;
         break;
-    case Operator::Plus:
+    case detail::Operator::Plus:
         lresult += rresult;
         break;
-    case Operator::Mult:
+    case detail::Operator::Mult:
         lresult *= rresult;
         break;
-    case Operator::Div:
+    case detail::Operator::Div:
         lresult /= rresult;
         break;
-    case Operator::LShift:
+    case detail::Operator::LShift:
         lresult <<= rresult;
         break;
-    case Operator::RShift:
+    case detail::Operator::RShift:
         lresult >>= rresult;
         break;
-    case Operator::And:
+    case detail::Operator::And:
         lresult &= rresult;
         break;
-    case Operator::Or:
+    case detail::Operator::Or:
         lresult |= rresult;
         break;
-    case Operator::Xor:
+    case detail::Operator::Xor:
         lresult ^= rresult;
         break;
-    case Operator::Pow:
+    case detail::Operator::Pow:
         // Convert the binary op into a function.
         lresult.ApplyFunction("pow", rresult);
         break;
@@ -317,11 +282,11 @@ Result UnaryOp::DoCompute(int indent) {
 
     // Deal with unary operators.
     switch (op) {
-    case Operator::UMinus:
+    case detail::Operator::UMinus:
         r *= Result("-1");
         return r;
 
-    case Operator::Not:
+    case detail::Operator::Not:
         r.operator~();
         return r;
     }
@@ -359,25 +324,4 @@ std::unique_ptr<ast::Node> Parse(const std::string& inp) {
     return ast;
 }
 
-#define CASE(v) case Operator::v: return #v
-
-std::string ToString(Operator op) {
-    switch (op) {
-    CASE(UMinus);
-    CASE(BMinus);
-    CASE(Plus);
-    CASE(Mult);
-    CASE(Div);
-    CASE(Or);
-    CASE(And);
-    CASE(Xor);
-    CASE(LShift);
-    CASE(RShift);
-    CASE(Pow);
-    };
-
-    LOG(FATAL) << "Unhandled operator: " << static_cast<int>(op);
-}
-
-#undef CASE
 }  // namespace parser

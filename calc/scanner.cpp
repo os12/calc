@@ -7,8 +7,19 @@
 #include "parser.h"
 
 namespace parser {
-
+namespace detail {
 namespace {
+
+const std::map<Token::Type, Operator> _known_bin_ops = {{Token::Minus, Operator::BMinus},
+                                                        {Token::Plus, Operator::Plus},
+                                                        {Token::Mult, Operator::Mult},
+                                                        {Token::Div, Operator::Div},
+                                                        {Token::LShift, Operator::LShift},
+                                                        {Token::RShift, Operator::RShift},
+                                                        {Token::And, Operator::And},
+                                                        {Token::Or, Operator::Or},
+                                                        {Token::Xor, Operator::Xor},
+                                                        {Token::Pow, Operator::Pow}};
 
 bool IsHexOrFloatDigit(char c) {
     return isdigit(c) || c == '.' || (toupper(c) >= 'A' && toupper(c) <= 'F');
@@ -27,6 +38,16 @@ const std::set<std::string> _functions = {
     "abs", "sin", "cos", "tan", "rad", "deg", "sqrt", "log2", "pow"};
 
 }  // namespace
+}  // namespace detail
+
+bool Token::IsBinOp() const {
+    return detail::_known_bin_ops.find(type) != detail::_known_bin_ops.end();
+}
+
+detail::Operator Token::GetBinOp() const {
+    DCHECK(IsBinOp());
+    return detail::_known_bin_ops.find(type)->second;
+}
 
 #define CASE(v) case Token::v: return #v
 
@@ -57,7 +78,31 @@ std::string ToString(Token::Type tt) {
 
 #undef CASE
 
-bool detail::Buffer::Scan(char c, bool eof, Token* t) {
+namespace detail {
+
+#define CASE(v) case Operator::v: return #v
+
+std::string ToString(Operator op) {
+    switch (op) {
+    CASE(UMinus);
+    CASE(BMinus);
+    CASE(Plus);
+    CASE(Mult);
+    CASE(Div);
+    CASE(Or);
+    CASE(And);
+    CASE(Xor);
+    CASE(LShift);
+    CASE(RShift);
+    CASE(Pow);
+    };
+
+    LOG(FATAL) << "Unhandled operator: " << static_cast<int>(op);
+}
+
+#undef CASE
+
+bool Buffer::Scan(char c, bool eof, Token* t) {
     switch (state_) {
     case State::None:
         DCHECK(buf_.empty());
@@ -100,7 +145,7 @@ bool detail::Buffer::Scan(char c, bool eof, Token* t) {
     LOG(FATAL) << "Unexpected state: " << static_cast<int>(state_);
 }
 
-bool detail::Buffer::FetchQueued(bool eof, Token* t) {
+bool Buffer::FetchQueued(bool eof, Token* t) {
     if (buf_.empty())
         return false;
 
@@ -148,7 +193,7 @@ bool detail::Buffer::FetchQueued(bool eof, Token* t) {
     }
 }
 
-bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
+bool Buffer::VariableSizedToken(bool eof, Token* t) {
     DCHECK(state_ == State::VarSized);
     DCHECK(!buf_.empty());
 
@@ -225,4 +270,5 @@ bool detail::Buffer::VariableSizedToken(bool eof, Token* t) {
     return false;
 }
 
+}  // namespace detail
 }
