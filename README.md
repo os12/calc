@@ -37,7 +37,38 @@ Here is the language grammar in something very close to the [BNF](https://en.wik
 <constant>    ::= PI
 <args>        := <expression> [ COMA <args> ]
 ```
+#### The AST
+The abstract syntax tree is built out of the following four node types:
+* `Terminal` - represents a single terminal such as a number or a symbolic constant.
+* `BinaryOp` - represents a binary operator such as "*" or "<<".
+* `UnaryUp` - represents a unary operator such as "-".
+* `Function` - represents a unary/binary function such as "sin", "abs", etc.
 
+Here are a few examples taken directly from the calculator's debug output:
+* Expression: `1 + 2**3`
+```
+BinaryOp: Plus
+    Terminal: 1
+    BinaryOp: Pow
+        Terminal: 2
+        Terminal: 3
+```
+* Expression: `10-2-3`
+```
+BinaryOp: BMinus
+	BinaryOp: BMinus
+		Terminal: 10
+		Terminal: 2
+	Terminal: 3
+```
+* Expression: `1--1`
+```
+BinaryOp: BMinus
+	   Terminal: 1
+	   UnaryOp: UMinus
+		      Terminal: 1
+```
+  
 ## The build process
 First get the code:
 * ```git clone https://github.com/os12/calc.git```
