@@ -72,7 +72,7 @@ auto MakeContext(Scanner<I> scanner) {
 }
 
 // Grammar:
-//  input       := expression EOF
+//  <input>         ::= <expression> EOF
 template <typename I>
 std::unique_ptr<ast::Node> Input(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
@@ -88,8 +88,8 @@ std::unique_ptr<ast::Node> Input(Context<I>& ctx) {
 }
 
 // Grammar:
-//  expression  := term [ binop term ]
-//  binop       := MINUS | PLUS | MULT | DIV | LSHIFT | RSHIFT | POW | AND | OR | XOR
+//  <expression>    ::= <term> [ <binop> <term> ]
+//  <binop>         ::= MINUS | PLUS | MULT | DIV | LSHIFT | RSHIFT | POW | AND | OR | XOR
 template <typename I>
 std::unique_ptr<ast::Node> Expression(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
@@ -127,7 +127,7 @@ std::unique_ptr<ast::Node> ExpressionHelper(Context<I>& ctx,
 }
 
 // Grammar:
-//  args        := expression [ COMA args ]
+//  <args>          ::= <expression> [ COMA <args> ]
 template <typename I>
 std::list<std::unique_ptr<ast::Node>> Args(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
@@ -146,14 +146,13 @@ std::list<std::unique_ptr<ast::Node>> Args(Context<I>& ctx) {
 }
 
 // Grammar:
-//  term        := INT
-//              | MINUS term
-//              | NOT term
-//              | LPAREN expression RPAREN
-//              | FUNCTION LPAREN args RPAREN
-//              | constatnt
-//
-//  constant    := PI
+//  <term>          ::= INT
+//                  | MINUS <term>
+//                  | NOT <term>
+//                  | LPAREN <expression> RPAREN
+//                  | FUNCTION LPAREN <args> RPAREN
+//                  | <constatnt>
+//  <constant>      ::= PI
 template <typename I>
 std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
