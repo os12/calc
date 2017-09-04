@@ -36,14 +36,28 @@ The abstract syntax tree is built out of the following four node types:
 * `Function` - represents a unary/binary function such as "sin", "abs", etc.
 
 Here are a few examples taken directly from the calculator's debug output:
-* Expression: `1 + 2**3`
-    ```
-    BinaryOp: Plus
-    	Terminal: 1
-    	BinaryOp: Pow
-    		Terminal: 2
-    		Terminal: 3
-    ```
+
+<table>
+<tr>
+<th>Debug output</th><th>Graph</th>
+</tr>
+<tr><td colspan="2">Expression: <b>1 + 2**3</b></td></tr>
+<tr>
+<td>
+<pre>
+BinaryOp: Plus
+	Terminal: 1
+	BinaryOp: Pow
+		Terminal: 2
+		Terminal: 3
+</pre>
+</td>
+<td>
+<img src="https://github.com/os12/calc/raw/master/docs/expr1.png" alt="expr1 graph">
+</td>
+</tr>
+</table>
+
 * Expression: `10-2-3`
     ```
     BinaryOp: BMinus
