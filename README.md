@@ -48,10 +48,10 @@ Here are a few examples taken directly from the calculator's debug output:
 * Expression: `1 + 2**3`
 ```
 BinaryOp: Plus
-    Terminal: 1
-    BinaryOp: Pow
-        Terminal: 2
-        Terminal: 3
+	Terminal: 1
+	BinaryOp: Pow
+		Terminal: 2
+		Terminal: 3
 ```
 * Expression: `10-2-3`
 ```
