@@ -37,28 +37,28 @@ The abstract syntax tree is built out of the following four node types:
 
 Here are a few examples taken directly from the calculator's debug output:
 * Expression: `1 + 2**3`
-```
-BinaryOp: Plus
-	Terminal: 1
-	BinaryOp: Pow
-		Terminal: 2
-		Terminal: 3
-```
+    ```
+    BinaryOp: Plus
+    	Terminal: 1
+    	BinaryOp: Pow
+    		Terminal: 2
+    		Terminal: 3
+    ```
 * Expression: `10-2-3`
-```
-BinaryOp: BMinus
-	BinaryOp: BMinus
-		Terminal: 10
-		Terminal: 2
-	Terminal: 3
-```
+    ```
+    BinaryOp: BMinus
+    	BinaryOp: BMinus
+    		Terminal: 10
+    		Terminal: 2
+    	Terminal: 3
+    ```
 * Expression: `1--1`
-```
-BinaryOp: BMinus
-	Terminal: 1
-	UnaryOp: UMinus
-		Terminal: 1
-```
+    ```
+    BinaryOp: BMinus
+    	Terminal: 1
+    	UnaryOp: UMinus
+    		Terminal: 1
+    ```
 
 #### The scanner
 The scanner is a templated class that operates on a STL-style range defined by two iterators. It produces the following token types on demand:
