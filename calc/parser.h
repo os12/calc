@@ -113,10 +113,15 @@ inline std::ostream& operator<<(std::ostream& s, const Result& r) {
 
 namespace ast {
 
+//
 // These structures comprise the Abstract Syntax Tree that is built during parsing.
+//
+
+// The base node. Provides the public function Compute().
 struct Node {
     virtual ~Node() = default;
 
+    // Returns the result of computation performed on the entire AST.
     Result Compute(int indent);
 
 protected:
@@ -124,42 +129,50 @@ protected:
     virtual std::string Print() const = 0;
 };
 
+// Terminal: represents a single terminal such as a number or a symbolic constant.
 struct Terminal : Node {
     Terminal(Result value) : value(std::move(value)) {}
-    Result value;
+
+    const Result value;
 
 protected:
     Result DoCompute(int indent) override;
     std::string Print() const override { return "Terminal: " + value.ToString(); };
 };
 
+// BinaryOp: represents a binary operator such as "*" or "<<".
 struct BinaryOp : Node {
     BinaryOp(Operator op, std::unique_ptr<Node> left_ast, std::unique_ptr<Node> right_ast)
         : op(op), left_ast(std::move(left_ast)), right_ast(std::move(right_ast)) {}
-    Operator op;
-    std::unique_ptr<Node> left_ast, right_ast;
+
+    const Operator op;
+    const std::unique_ptr<Node> left_ast, right_ast;
 
 protected:
     Result DoCompute(int indent) override;
     std::string Print() const override { return "BinaryOp: " + ToString(op); };
 };
 
+// UnaryUp: represents a unary operator such as "-".
 struct UnaryOp : Node {
     UnaryOp(Operator op, std::unique_ptr<Node> arg_ast)
         : op(op), arg_ast(std::move(arg_ast)) {}
-    Operator op;
-    std::unique_ptr<Node> arg_ast;
+
+    const Operator op;
+    const std::unique_ptr<Node> arg_ast;
 
 protected:
     Result DoCompute(int indent) override;
     std::string Print() const override { return "UnaryOp: " + ToString(op); };
 };
 
+// Function: represents a unary/binary function such as "sin", "abs", etc.
 struct Function : Node {
     Function(Token token, std::list<std::unique_ptr<Node>> args)
         : token(token), args(move(args)) {}
-    Token token;
-    std::list<std::unique_ptr<Node>> args;
+
+    const Token token;
+    const std::list<std::unique_ptr<Node>> args;
 
 protected:
     Result DoCompute(int indent) override;
