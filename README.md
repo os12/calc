@@ -89,7 +89,7 @@ BinaryOp: Mult
 			Terminal: 4
 </pre>
 </td>
-<td><img src="https://raw.githubusercontent.com/os12/calc/master/docs/expr4.svg" alt="expr4 graph"></td></tr>
+<td><img src="https://github.com/os12/calc/raw/master/docs/expr4.svg" alt="expr4 graph"></td></tr>
 </tr>
 </table>
 
