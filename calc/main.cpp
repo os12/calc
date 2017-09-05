@@ -78,6 +78,7 @@ struct OutControl {
         control->line_wrapped(true);
         control->editable(false);
         control->enable_caret();
+        nana::API::eat_tabstop(*control, false);
     }
 
     std::unique_ptr<nana::label> label;
@@ -102,7 +103,7 @@ int __stdcall WinMain(
     nana::paint::font result_font("Verdana", 10);
 
     std::vector<std::string> names = {
-        "signed32", "unsigned32", "hex32", "hex64", "real", "realexp", "big"};
+        "unsigned32", "signed32", "hex32", "hex64", "real", "realexp", "big"};
     std::map<std::string, OutControl> out_controls;
     for (const auto &name : names)
         out_controls[name] = OutControl(form, result_font, name);
@@ -113,6 +114,7 @@ int __stdcall WinMain(
     nana::textbox input{form};
     input.line_wrapped(true);
     input.typeface(nana::paint::font("Verdana", 12));
+    nana::API::eat_tabstop(input, false);
     input.events().text_changed([&out_controls,
                                  &statusbar](const nana::arg_textbox& arg) {
         for (auto& entry : out_controls)
