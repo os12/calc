@@ -61,6 +61,7 @@
     <ClInclude Include="scanner.h">
       <Filter>Code\parser</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="big\Cbignum.cpp">
@@ -113,5 +114,11 @@
     <None Include="big\Cbnl64.inl">
       <Filter>Code\big</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="calc.ico" />
   </ItemGroup>
 </Project>

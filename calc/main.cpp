@@ -94,6 +94,10 @@ int __stdcall WinMain(
     FLAGS_log_dir = "./";
     google::InitGoogleLogging("calc.exe");
 
+    std::string exe_path(1024, ' ');
+    exe_path.resize(
+        GetModuleFileNameA(nullptr, &exe_path[0], static_cast<DWORD>(exe_path.size())));
+
     // Forcefully run every test in the debug builds.
     DCHECK(tests::Run());
 
@@ -166,7 +170,9 @@ int __stdcall WinMain(
     form.caption("Calc!");
     form.size({400, 200});
     nana::API::track_window_size(form, {400, 200}, false);
+    form.icon(nana::paint::image(exe_path));
     form.show();
+
     input.focus();
     input.caption("");
     nana::exec();

@@ -2,3 +2,4 @@
 _Debug
 _Release
 *.vcxproj.user
+/calc/Resource.aps
