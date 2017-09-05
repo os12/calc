@@ -76,6 +76,21 @@ BinaryOp: BMinus
     		Terminal: 1
 </pre></td>
 <td><img src="https://github.com/os12/calc/raw/master/docs/expr3.png" alt="expr3 graph"></td></tr>
+<tr><td colspan="2">Walking AST for exression: <b>1*(2+3*4)</b></td></tr>
+<tr>
+<td>
+<pre>
+BinaryOp: Mult
+	Terminal: 1
+	BinaryOp: Plus
+		Terminal: 2
+		BinaryOp: Mult
+			Terminal: 3
+			Terminal: 4
+</pre>
+</td>
+<td><img src="https://raw.githubusercontent.com/os12/calc/master/docs/expr4.svg" alt="expr4 graph"></td></tr>
+</tr>
 </table>
 
 #### The scanner
