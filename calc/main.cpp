@@ -165,6 +165,7 @@ int __stdcall WinMain(
 
     form.caption("Calc!");
     form.size({400, 200});
+    nana::API::track_window_size(form, {400, 200}, false);
     form.show();
     input.focus();
     input.caption("");
