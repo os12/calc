@@ -921,10 +921,16 @@ const T*  base   ()             const   { return (e);           }
 */
 #ifdef  ALLOW_EXARRAY_SCHEDULING
 
-INDECL       T&  at     (size_t i)      {       register T* p = e;
-                if (len <= (size_t)i) p = range(i); return p[i]; }
-INDECL const T&  at     (size_t i) const{ const register T* p = e;
-                if (len <= (size_t)i) p = range(i); return p[i]; }
+    INDECL T& at(size_t i) {
+        T* p = e;
+        if (len <= (size_t)i)
+            p = range(i);
+        return p[i]; }
+    INDECL const T& at(size_t i) const {
+        const T* p = e;
+        if (len <= (size_t)i)
+            p = range(i);
+        return p[i]; }
 
 #else /*ALLOW_EXARRAY_SCHEDULING*/
 
@@ -954,10 +960,16 @@ INDECL const T&  at     (size_t i) const
 */
 #ifdef  ALLOW_EXARRAY_SCHEDULING
 
-INDECL       T&  access (size_t i)      {       register T* p = e;
-                if (len <= (size_t)i) p = grow (i); return p[i]; }
-INDECL const T&  access (size_t i) const{ const register T* p = e;
-                if (len <= (size_t)i) p = grow (i); return p[i]; }
+    INDECL T& access(size_t i) {
+        T* p = e;
+        if (len <= (size_t)i)
+            p = grow(i);
+        return p[i]; }
+    INDECL const T& access(size_t i) const {
+        const T* p = e;
+        if (len <= (size_t)i)
+            p = grow(i);
+        return p[i]; }
 
 #else /*ALLOW_EXARRAY_SCHEDULING*/
 
@@ -2470,10 +2482,16 @@ private:
 
 #ifdef  ALLOW_EXARRAY_SCHEDULING
 
-INDECL       T&  at_  (size_t i)      {       register T* p = e;
-                if (len <= (size_t)i) p = range(i); return p[i]; }
-INDECL const T&  at_  (size_t i) const{ const register T* p = e;
-                if (len <= (size_t)i) p = range(i); return p[i]; }
+    INDECL T& at_(size_t i) {
+        T* p = e;
+        if (len <= (size_t)i)
+            p = range(i);
+        return p[i]; }
+    INDECL const T& at_(size_t i) const {
+        const T* p = e;
+        if (len <= (size_t)i)
+            p = range(i);
+        return p[i]; }
 
 #else /*ALLOW_EXARRAY_SCHEDULING*/
 

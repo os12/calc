@@ -317,15 +317,15 @@ size_t _CBNL_C _cBigNumberFit (                 // Normalization.
                         EXPTR(CBNL) p1          // Buffer with number.
         )                                       // Size of buffer >= 2.
 {
-  register size_t n1 = (size_t)(*p1);           // Number of words.
-  p1 += n1;                                     // Preparing of pointer.
+    size_t n1 = (size_t)(*p1);  // Number of words.
+    p1 += n1;                   // Preparing of pointer.
 
-  if (n1)                                       // If bits of the high word
-  {                                             // and high bit of the word
-    register CBNL pass, lp = *p1;               // before high are all 0 or 1
-    do continue;                                // then delete the high word.
-    while (--n1 != 0 &&
-        (pass = lp, lp = p1 [-1], --p1, pass == (lp >> (BITS-1))));
+    if (n1)                            // If bits of the high word
+    {                                  // and high bit of the word
+        CBNL pass, lp = *p1;           // before high are all 0 or 1
+        do
+            continue;  // then delete the high word.
+        while (--n1 != 0 && (pass = lp, lp = p1[-1], --p1, pass == (lp >> (BITS - 1))));
   }                                             // If no words at all
   else { p1 [1] = 0; }                          // then add word 0.
 
@@ -344,14 +344,14 @@ size_t _CBNL_C _cBigNumberFitTo (               // Denormalization.
                         size_t      n           // Number of words.
         )                                       // Size of buffer no less
 {                                               // max (*p1 + 2, n + 1).
-  register size_t n1 = (size_t)(*p1);           // Number of words.
-  register CBNL pass = p1 [n1] >> (BITS-1);     // Carry.
+    size_t n1 = (size_t)(*p1);                  // Number of words.
+    CBNL pass = p1[n1] >> (BITS - 1);           // Carry.
 
-  do
-    p1 [++n1] = pass;                           // Expand the carry.
-  while (n1 < n);
+    do
+        p1[++n1] = pass;  // Expand the carry.
+    while (n1 < n);
 
-  return (n1);                                  // Number of words.
+    return (n1);  // Number of words.
 }
 //#define cBigNumberFitTo(p1,n) (size_t)(*(p1)=_cBigNumberFitTo(p1,n))
 
@@ -378,10 +378,10 @@ int    _CBNL_C  cBigNumberComp (                // Comparison of p1, p2.
 {                                               // p1, p2 may overlap.
   size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words in p1.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words in p2.
-  register CBNL lp1 = 0;                        // Current word of p1.
-  register CBNL lp2 = 0;                        // Current word of p2.
+  CBNL lp1 = 0;                                 // Current word of p1.
+  CBNL lp2 = 0;                                 // Current word of p2.
 
-//      Comparison of sign words.
+  //      Comparison of sign words.
 
   if (n1) lp1 = p1 [n1--];                      // Sign word of p1.
   if (n2) lp2 = p2 [n2--];                      // Sign word of p2.
@@ -456,8 +456,8 @@ int    _CBNL_C  cBigNumberCompHigh (            // Comparison from high words.
   assert (n1 >= n2);                            // Check of size.
   assert (n2 > 0);                              // Check of size.
 
-  register CBNL lp1 = p1 [n1--];                // Current word of p1.
-  register CBNL lp2 = p2 [n2--];                // Current word of p2.
+  CBNL lp1 = p1[n1--];                          // Current word of p1.
+  CBNL lp2 = p2[n2--];                          // Current word of p2.
   assert (!n1 || lp1 != (p1 [n1] >> (BITS-1))); // Check of normalization.
   assert (!n2 || lp2 != (p2 [n2] >> (BITS-1))); // Check of normalization.
 
@@ -973,17 +973,18 @@ size_t  _cBigNumberXor  (                       // Addition mod2 p = p1 ^ p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-    register CBNL lp2 = 0;                      // Current word of p2.
+      CBNL lp2 = 0;  // Current word of p2.
 
-//      Processing of words p1, p2.
+      //      Processing of words p1, p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
       {
-        do { *p++ = *p1++ ^ (lp2 = *p2++); }    // Cycle on p1, p2.
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+          size_t n;  // Counter of words.
+          if ((n = n2) != 0) {
+              do {
+                  *p++ = *p1++ ^ (lp2 = *p2++);
+              }                  // Cycle on p1, p2.
+              while (--n != 0);  // End of cycle on p1, p2.
+          }
     }
 
 //      Processing of remainder p1, if p1 is longer then p2.
@@ -1004,15 +1005,15 @@ size_t  _cBigNumberXor  (                       // Addition mod2 p = p1 ^ p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL pass;                         // The high word.
-    register CBNL lp;                           // The previous word.
-    register size_t n = n1;                     // Number of words.
-    if (n)                                      // If bits of the high word
-    {                                           // and high bit of the word
-      lp = *p;                                  // before high are all 0 or 1
-      do continue;                              // then delete the high word.
-      while (--n != 0 &&
-        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
+      CBNL pass;      // The high word.
+      CBNL lp;        // The previous word.
+      size_t n = n1;  // Number of words.
+      if (n)          // If bits of the high word
+      {               // and high bit of the word
+          lp = *p;    // before high are all 0 or 1
+          do
+              continue;  // then delete the high word.
+          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
     }                                           // If no words at all
     else { p [1] = 0; }                         // then add word 0.
 
@@ -1034,17 +1035,18 @@ size_t  _cBigNumberAnd  (                       // Conjunction p = p1 & p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-    register CBNL lp2 = 0;                      // Current word of p2.
+      CBNL lp2 = 0;  // Current word of p2.
 
-//      Processing of words p1, p2.
+      //      Processing of words p1, p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
       {
-        do { *p++ = *p1++ & (lp2 = *p2++); }    // Cycle on p1, p2.
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+          size_t n;  // Counter of words.
+          if ((n = n2) != 0) {
+              do {
+                  *p++ = *p1++ & (lp2 = *p2++);
+              }                  // Cycle on p1, p2.
+              while (--n != 0);  // End of cycle on p1, p2.
+          }
     }
 
 //      Processing of remainder p1, if p1 is longer then p2.
@@ -1065,19 +1067,21 @@ size_t  _cBigNumberAnd  (                       // Conjunction p = p1 & p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL pass;                         // The high word.
-    register CBNL lp;                           // The previous word.
-    register size_t n = n1;                     // Number of words.
-    if (n)                                      // If bits of the high word
-    {                                           // and high bit of the word
-      lp = *p;                                  // before high are all 0 or 1
-      do continue;                              // then delete the high word.
-      while (--n != 0 &&
-        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
-    }                                           // If no words at all
-    else { p [1] = 0; }                         // then add word 0.
+      CBNL pass;      // The high word.
+      CBNL lp;        // The previous word.
+      size_t n = n1;  // Number of words.
+      if (n)          // If bits of the high word
+      {               // and high bit of the word
+          lp = *p;    // before high are all 0 or 1
+          do
+              continue;  // then delete the high word.
+          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
+      }  // If no words at all
+      else {
+          p[1] = 0;
+      }  // then add word 0.
 
-    return (n + 1);                             // Number of words p.
+      return (n + 1);  // Number of words p.
   }
 }
 //#define cBigNumberAnd(p1,p2,p) (size_t)(*(p)=_cBigNumberAnd(p1,p2,p))
@@ -1095,17 +1099,18 @@ size_t  _cBigNumberOr  (                        // Disjunction p = p1 & p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-    register CBNL lp2 = 0;                      // Current word of p2.
+      CBNL lp2 = 0;  // Current word of p2.
 
-//      Processing of words p1, p2.
+      //      Processing of words p1, p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
       {
-        do { *p++ = *p1++ | (lp2 = *p2++); }    // Cycle on p1, p2.
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+          size_t n;  // Counter of words.
+          if ((n = n2) != 0) {
+              do {
+                  *p++ = *p1++ | (lp2 = *p2++);
+              }                  // Cycle on p1, p2.
+              while (--n != 0);  // End of cycle on p1, p2.
+          }
     }
 
 //      Processing of remainder p1, if p1 is longer then p2.
@@ -1126,15 +1131,15 @@ size_t  _cBigNumberOr  (                        // Disjunction p = p1 & p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL pass;                         // The high word.
-    register CBNL lp;                           // The previous word.
-    register size_t n = n1;                     // Number of words.
-    if (n)                                      // If bits of the high word
-    {                                           // and high bit of the word
-      lp = *p;                                  // before high are all 0 or 1
-      do continue;                              // then delete the high word.
-      while (--n != 0 &&
-        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
+      CBNL pass;      // The high word.
+      CBNL lp;        // The previous word.
+      size_t n = n1;  // Number of words.
+      if (n)          // If bits of the high word
+      {               // and high bit of the word
+          lp = *p;    // before high are all 0 or 1
+          do
+              continue;  // then delete the high word.
+          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
     }                                           // If no words at all
     else { p [1] = 0; }                         // then add word 0.
 
@@ -1174,27 +1179,26 @@ size_t  _cBigNumberAdd  (                       // Addition p = p1 + p2.
   assert (n1 >= n2);
   if (n1 == 0) return 0;                        // Return if 0 words.
 
-  register unsigned CBNL pass = 0;              // Carry to next word of p.
-        // carry is contained in the high bit of pass
-        // unsigned CBNL provides for unsigned shift of pass.
+  unsigned CBNL pass = 0;  // Carry to next word of p.
+                           // carry is contained in the high bit of pass
+                           // unsigned CBNL provides for unsigned shift of pass.
   {
-    register CBNL lp1 = 0;                      // Current word of p1.
-    register CBNL lp2 = 0;                      // Current word of p2.
+     CBNL lp1 = 0;                      // Current word of p1.
+     CBNL lp2 = 0;                      // Current word of p2.
 
-//      Addition of words p1, p2.
+     //      Addition of words p1, p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
-      {
-        do                                      // Cycle on p1, p2.
-        {
-          lp1 = *p1++; lp2 = *p2++;
-          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
-                                                           | (lp1 & lp2);
-        }
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+     {
+         size_t n;  // Counter of words.
+         if ((n = n2) != 0) {
+             do  // Cycle on p1, p2.
+             {
+                 lp1 = *p1++;
+                 lp2 = *p2++;
+                 pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
+                        (lp1 & lp2);
+             } while (--n != 0);  // End of cycle on p1, p2.
+         }
     }
 
 //      Either carry or borrow over rest of p1 if p1 is longer then p2.
@@ -1203,15 +1207,14 @@ size_t  _cBigNumberAdd  (                       // Addition p = p1 + p2.
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-        register const CBNL *pp = p1;           // Optimization.
-        if ((lp2 & CBNL_MIN) == 0)              // p2 is not negative.
-        {
-          do                                    // Cycle on p1.
+          const CBNL* pp = p1;        // Optimization.
+          if ((lp2 & CBNL_MIN) == 0)  // p2 is not negative.
           {
-            lp1 = *pp++;
-            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
-          }
-          while (--n != 0);                     // End of cycle on p1.
+              do  // Cycle on p1.
+              {
+                  lp1 = *pp++;
+                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
+              } while (--n != 0);  // End of cycle on p1.
         }
         else                                    // p2 is negative.
         {
@@ -1237,13 +1240,14 @@ size_t  _cBigNumberAdd  (                       // Addition p = p1 + p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL lp = *p;                      // The previous word.
-    register size_t n = n1;                     // Number of words - 1.
-    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
-    {                                           // and high bit of the word
-      do continue;                              // before high are all 0 or 1
-      while (--n != 0 &&                        // then delete the high word.
-        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
+      CBNL lp = *p;                               // The previous word.
+      size_t n = n1;                              // Number of words - 1.
+      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
+      {                                           // and high bit of the word
+          do
+              continue;       // before high are all 0 or 1
+          while (--n != 0 &&  // then delete the high word.
+                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
     }
     else { p [1] = pass; }                      // Storing of the high word.
 
@@ -1272,23 +1276,22 @@ size_t  _cBigNumberSub  (                       // Subtraction p = p1 - p2.
         // unsigned CBNL provides for unsigned shift of pass.
         // initial value provides for addition of 1.
   {
-    register CBNL lp1 = 0;                      // Current word of p1.
-    register CBNL lp2 = ~(CBNL)0;               // Current word of ~p2.
+      CBNL lp1 = 0;         // Current word of p1.
+      CBNL lp2 = ~(CBNL)0;  // Current word of ~p2.
 
-//      Addition of words p1, ~p2.
+      //      Addition of words p1, ~p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
       {
-        do                                      // Cycle on p1, p2.
-        {
-          lp1 = *p1++; lp2 = ~(*p2++);
-          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
-                                                           | (lp1 & lp2);
-        }
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+          size_t n;  // Counter of words.
+          if ((n = n2) != 0) {
+              do  // Cycle on p1, p2.
+              {
+                  lp1 = *p1++;
+                  lp2 = ~(*p2++);
+                  pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
+                         (lp1 & lp2);
+              } while (--n != 0);  // End of cycle on p1, p2.
+          }
     }
 
 //      Either carry or borrow over rest of p1 if p1 is longer then p2.
@@ -1297,15 +1300,14 @@ size_t  _cBigNumberSub  (                       // Subtraction p = p1 - p2.
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-        register const CBNL *pp = p1;           // Optimization.
-        if ((lp2 & CBNL_MIN) == 0)              // p2 is negative.
-        {
-          do                                    // Cycle on p1.
+          const CBNL* pp = p1;        // Optimization.
+          if ((lp2 & CBNL_MIN) == 0)  // p2 is negative.
           {
-            lp1 = *pp++;
-            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
-          }
-          while (--n != 0);                     // End of cycle on p1.
+              do  // Cycle on p1.
+              {
+                  lp1 = *pp++;
+                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
+              } while (--n != 0);  // End of cycle on p1.
         }
         else                                    // p2 is not negative.
         {
@@ -1331,17 +1333,19 @@ size_t  _cBigNumberSub  (                       // Subtraction p = p1 - p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL lp = *p;                      // The previous word.
-    register size_t n = n1;                     // Number of words - 1.
-    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
-    {                                           // and high bit of the word
-      do continue;                              // before high are all 0 or 1
-      while (--n != 0 &&                        // then delete the high word.
-        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
-    }
-    else { p [1] = pass; }                      // Storing of the high word.
+      CBNL lp = *p;                               // The previous word.
+      size_t n = n1;                              // Number of words - 1.
+      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
+      {                                           // and high bit of the word
+          do
+              continue;       // before high are all 0 or 1
+          while (--n != 0 &&  // then delete the high word.
+                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
+      } else {
+          p[1] = pass;
+      }  // Storing of the high word.
 
-    return (n + 1);                             // Number of words p.
+      return (n + 1);  // Number of words p.
   }
 }
 //#define cBigNumberSub(p1,p2,p) (size_t)(*(p)=_cBigNumberSub(p1,p2,p))
@@ -1365,23 +1369,22 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
         // unsigned CBNL provides for unsigned shift of pass.
         // initial value provides for addition of 1.
   {
-    register CBNL lp1 = ~(CBNL)0;               // Current word of ~p1.
-    register CBNL lp2 = 0;                      // Current word of p2.
+      CBNL lp1 = ~(CBNL)0;  // Current word of ~p1.
+      CBNL lp2 = 0;         // Current word of p2.
 
-//      Addition of words ~p1, p2.
+      //      Addition of words ~p1, p2.
 
-    {
-      size_t n;                                 // Counter of words.
-      if ((n = n2) != 0)
       {
-        do                                      // Cycle on p1, p2.
-        {
-          lp1 = ~(*p1++); lp2 = *p2++;
-          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
-                                                           | (lp1 & lp2);
-        }
-        while (--n != 0);                       // End of cycle on p1, p2.
-      }
+          size_t n;  // Counter of words.
+          if ((n = n2) != 0) {
+              do  // Cycle on p1, p2.
+              {
+                  lp1 = ~(*p1++);
+                  lp2 = *p2++;
+                  pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
+                         (lp1 & lp2);
+              } while (--n != 0);  // End of cycle on p1, p2.
+          }
     }
 
 //      Either carry or borrow over rest of p1 if p1 is longer then p2.
@@ -1390,25 +1393,22 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-        register const CBNL *pp = p1;           // Optimization.
-        if ((lp2 & CBNL_MIN) == 0)              // p2 is negative.
-        {
-          do                                    // Cycle on p1.
+          const CBNL* pp = p1;        // Optimization.
+          if ((lp2 & CBNL_MIN) == 0)  // p2 is negative.
           {
-            lp1 = ~(*pp++);
-            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
-          }
-          while (--n != 0);                     // End of cycle on p1.
-        }
-        else                                    // p2 is not negative.
-        {
-          do                                    // Cycle on p1.
+              do  // Cycle on p1.
+              {
+                  lp1 = ~(*pp++);
+                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
+              } while (--n != 0);  // End of cycle on p1.
+          } else                   // p2 is not negative.
           {
-            lp1 = ~(*pp++);
-            pass = ~(*p++ = (pass >> (BITS-1)) + lp1 - 1) | lp1;
+              do  // Cycle on p1.
+              {
+                  lp1 = ~(*pp++);
+                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1 - 1) | lp1;
+              } while (--n != 0);  // End of cycle on p1.
           }
-          while (--n != 0);                     // End of cycle on p1.
-        }
       }
     }
     --p;                                        // Preparing of pointer.
@@ -1424,17 +1424,19 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-    register CBNL lp = *p;                      // The previous word.
-    register size_t n = n1;                     // Number of words - 1.
-    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
-    {                                           // and high bit of the word
-      do continue;                              // before high are all 0 or 1
-      while (--n != 0 &&                        // then delete the high word.
-        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
-    }
-    else { p [1] = pass; }                      // Storing of the high word.
+      CBNL lp = *p;                               // The previous word.
+      size_t n = n1;                              // Number of words - 1.
+      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
+      {                                           // and high bit of the word
+          do
+              continue;       // before high are all 0 or 1
+          while (--n != 0 &&  // then delete the high word.
+                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
+      } else {
+          p[1] = pass;
+      }  // Storing of the high word.
 
-    return (n + 1);                             // Number of words p.
+      return (n + 1);  // Number of words p.
   }
 }
 //#define cBigNumberSubS(p1,p2,p) (size_t)(*(p)=_cBigNumberSubS(p1,p2,p))
@@ -1560,37 +1562,45 @@ void   _CBNL_C  cBigNumberMAddM (               // Addition p1 += p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  register unsigned CBNL pass = 0;              // Carry: 0 or 1.
-        // unsigned CBNL provides for unsigned shift of pass.
+  unsigned CBNL pass = 0;  // Carry: 0 or 1.
+                           // unsigned CBNL provides for unsigned shift of pass.
   {
-    const CBPTR(CBNL) pp = p1 + n2;             // The last word of p2.
-    p1 += _cBigNumberSkip;                      // Set start of p1.
-    p2 += _cBigNumberSkip;                      // Set start of p2.
-    register CBNL lp1;                          // Current word of p1.
-    register CBNL lp2;                          // Current word of p2.
+      const CBPTR(CBNL) pp = p1 + n2;  // The last word of p2.
+      p1 += _cBigNumberSkip;           // Set start of p1.
+      p2 += _cBigNumberSkip;           // Set start of p2.
+      CBNL lp1;                        // Current word of p1.
+      CBNL lp2;                        // Current word of p2.
 
-//      Addition of words p1, p2.
-//      Operators of cycle calculates the following logical expression:
-//      pass = ((~(*p1 = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
-//                                                       | (lp1 & lp2))
-//      Logical expression is listed by the following chain of assignments:
-//      pass += (lp1 + lp2)     // *p1 = pass
-//      lp1  = ~(lp1 ^ lp2)     // Assignment to lp1 releases one register.
-//      pass = ~(pass | lp1)    // It is used identity of de Morgan.
-//      pass |= (lp1 & lp2)     // and identity a & b = ~(a^b) & b.
-//      Assignments are interleaved by cycle handling checks and increments
-//      of pointers to optimize loading of Pentium pipes.
+      //      Addition of words p1, p2.
+      //      Operators of cycle calculates the following logical expression:
+      //      pass = ((~(*p1 = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
+      //                                                       | (lp1 & lp2))
+      //      Logical expression is listed by the following chain of assignments:
+      //      pass += (lp1 + lp2)     // *p1 = pass
+      //      lp1  = ~(lp1 ^ lp2)     // Assignment to lp1 releases one register.
+      //      pass = ~(pass | lp1)    // It is used identity of de Morgan.
+      //      pass |= (lp1 & lp2)     // and identity a & b = ~(a^b) & b.
+      //      Assignments are interleaved by cycle handling checks and increments
+      //      of pointers to optimize loading of Pentium pipes.
 
-    for (;;)                                    // Cycle on p1, p2.
-    {
-      lp1 = *p1;        lp2 = *p2;              // Current words of p1, p2.
-      pass += lp1;      lp1 ^= lp2;
-      pass += lp2;      lp1 = ~lp1;
-      *p1 = pass;       pass |= lp1;
-      lp1 &= lp2;       pass = ~pass;
-      ++p2;             pass |= lp1;
-      if (p1 >= pp)     break;
-      ++p1;             pass >>= (BITS-1);
+      for (;;)  // Cycle on p1, p2.
+      {
+          lp1 = *p1;
+          lp2 = *p2;  // Current words of p1, p2.
+          pass += lp1;
+          lp1 ^= lp2;
+          pass += lp2;
+          lp1 = ~lp1;
+          *p1 = pass;
+          pass |= lp1;
+          lp1 &= lp2;
+          pass = ~pass;
+          ++p2;
+          pass |= lp1;
+          if (p1 >= pp)
+              break;
+          ++p1;
+          pass >>= (BITS - 1);
     }
     if ((CBNL)(lp2 ^= pass) >= 0) return;       // No carry.
   }
@@ -1600,7 +1610,7 @@ void   _CBNL_C  cBigNumberMAddM (               // Addition p1 += p2<<k2*BITS.
 //                          pass contains carry in the high bit.
 
   {
-    register CBNL lp1;                          // Current word of p1.
+    CBNL lp1;                          // Current word of p1.
     if ((CBNL)pass < 0)                         // p2 is not negative.
     {
       do                                        // Cycle on p1.
@@ -1650,27 +1660,27 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  register CBNL pass = 0;                       // Borrow: 0 or -1.
-        // CBNL provides for signed shift of pass.
+  CBNL pass = 0;  // Borrow: 0 or -1.
+                  // CBNL provides for signed shift of pass.
   {
     const CBPTR(CBNL) pp = p1 + n2;             // The last word of p2.
     p1 += _cBigNumberSkip;                      // Set start of p1.
     p2 += _cBigNumberSkip;                      // Set start of p2.
-    register CBNL lp1;                          // Current word of p1.
-    register CBNL lp2;                          // Current word of p2.
+    CBNL lp1;                                   // Current word of p1.
+    CBNL lp2;                                   // Current word of p2.
 
-//      Subtraction of words p1, p2.
-//      Operators of cycle calculates the following logical expression:
-//      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
-//                                                     & (~lp1 | lp2))
-//      Logical expression is listed by the following chain of assignments:
-//      pass += (lp1 - lp2)     // *p1 = pass
-//      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
-//      pass = ~pass;           // It is used identity of de Morgan
-//      pass |= (lp1 & ~lp2)    // and identity a & ~b = (a^b) & ~b.
-//      pass = ~pass;
-//      Assignments are interleaved by cycle handling checks and increments
-//      of pointers to optimize loading of Pentium pipes.
+    //      Subtraction of words p1, p2.
+    //      Operators of cycle calculates the following logical expression:
+    //      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
+    //                                                     & (~lp1 | lp2))
+    //      Logical expression is listed by the following chain of assignments:
+    //      pass += (lp1 - lp2)     // *p1 = pass
+    //      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
+    //      pass = ~pass;           // It is used identity of de Morgan
+    //      pass |= (lp1 & ~lp2)    // and identity a & ~b = (a^b) & ~b.
+    //      pass = ~pass;
+    //      Assignments are interleaved by cycle handling checks and increments
+    //      of pointers to optimize loading of Pentium pipes.
 
     for (;;)                                    // Cycle on p1, p2.
     {
@@ -1692,25 +1702,24 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
 //                          pass contains ~borrow in the high bit.
 
   {
-    register CBNL lp1;                          // Current word of p1.
-    if ((CBNL)pass < 0)                         // p2 is negative.
-    {
-      do                                        // Cycle on p1.
+      CBNL lp1;            // Current word of p1.
+      if ((CBNL)pass < 0)  // p2 is negative.
       {
-        if (p1 >= pp) break;
-        lp1 = *++p1;
-      }
-      while ((~(*p1 = lp1 + 1) & lp1) < 0);
-    }
-    else                                        // p2 is not negative.
-    {
-      do                                        // Cycle on p1.
+          do  // Cycle on p1.
+          {
+              if (p1 >= pp)
+                  break;
+              lp1 = *++p1;
+          } while ((~(*p1 = lp1 + 1) & lp1) < 0);
+      } else  // p2 is not negative.
       {
-        if (p1 >= pp) break;
-        lp1 = *++p1;
+          do  // Cycle on p1.
+          {
+              if (p1 >= pp)
+                  break;
+              lp1 = *++p1;
+          } while ((~(*p1 = lp1 - 1) | lp1) >= 0);
       }
-      while ((~(*p1 = lp1 - 1) | lp1) >= 0);
-    }
   }
 }
 
@@ -1745,26 +1754,26 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  register CBNL pass = 0;                       // Borrow: 0 or -1.
-        // CBNL provides for signed shift of pass.
+  CBNL pass = 0;  // Borrow: 0 or -1.
+                  // CBNL provides for signed shift of pass.
   {
     const CBPTR(CBNL) pp = p1 + n2;             // The last word of p2.
     p1 += _cBigNumberSkip;                      // Set start of p1.
     p2 += _cBigNumberSkip;                      // Set start of p2.
-    register CBNL lp1;                          // Current word of p1.
-    register CBNL lp2;                          // Current word of p2.
+    CBNL lp1;                                   // Current word of p1.
+    CBNL lp2;                                   // Current word of p2.
 
-//      Subtraction of words p1, p2.
-//      Operators of cycle calculates the following logical expression:
-//      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
-//                                                     & (~lp1 | lp2))
-//      Logical expression is listed by the following chain of assignments:
-//      pass += (lp1 - lp2)     // *p1 = pass
-//      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
-//      pass &=~(lp1 & ~lp2)    // It is used identity of de Morgan
-//                              // and identity a & ~b = (a^b) & ~b.
-//      Assignments are interleaved by cycle handling checks and increments
-//      of pointers to optimize loading of Pentium pipes.
+    //      Subtraction of words p1, p2.
+    //      Operators of cycle calculates the following logical expression:
+    //      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
+    //                                                     & (~lp1 | lp2))
+    //      Logical expression is listed by the following chain of assignments:
+    //      pass += (lp1 - lp2)     // *p1 = pass
+    //      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
+    //      pass &=~(lp1 & ~lp2)    // It is used identity of de Morgan
+    //                              // and identity a & ~b = (a^b) & ~b.
+    //      Assignments are interleaved by cycle handling checks and increments
+    //      of pointers to optimize loading of Pentium pipes.
 
     for (;;)                                    // Cycle on p1, p2.
     {
@@ -1785,7 +1794,7 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
 //                          copy of which resides in pass.
 
   {
-    register size_t n1 = n2 + k2;
+    size_t n1 = n2 + k2;
 
 //      Loop performs the following operations:
 //      do continue;
@@ -1794,13 +1803,17 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
 
     for (;;)
     {
-      register CBNL lp1;                        // The high word.
-      register CBNL lp2;                        // The previous word.
-      if (--n1 == 0)    break;                  // One word remains.
-      lp2 = p1 [-1];    --p1;
-      lp1 = pass;       pass = lp2;
-      lp2 >>= (BITS-1);
-      if (lp1 != lp2)   break;
+        CBNL lp1;  // The high word.
+        CBNL lp2;  // The previous word.
+        if (--n1 == 0)
+            break;  // One word remains.
+        lp2 = p1[-1];
+        --p1;
+        lp1 = pass;
+        pass = lp2;
+        lp2 >>= (BITS - 1);
+        if (lp1 != lp2)
+            break;
     }
     return (n1 + 1);                            // Number of words p.
   }

@@ -1560,11 +1560,10 @@ char*   cBigNumber::toa (               // Conversion to string.
 
 //      Select conversion table.
 
-  register const EXPTR(char) ps = EXPTRTO (char,
-                    numtochar [(fill & cBigNumber_uppercase) != 0],
-                    sizeof (numtochar [0]));
+  const EXPTR(char) ps =
+      EXPTRTO(char, numtochar[(fill & cBigNumber_uppercase) != 0], sizeof(numtochar[0]));
 
-//      Output of sign and prefixes.
+  //      Output of sign and prefixes.
 
   {
     CBNL sign = num_.comp0();                   // Sign.
@@ -1714,25 +1713,25 @@ char*   cBigNumber::toa (               // Conversion to string.
 //      except for case npmax == 0).
 
       {
-        register long lnum;                     // Integer.
-        lnum = (long) mod_.loword();            // Output of module.
-        for (;;)                                // Repeat cycle
-        {                                       // once or twice.
-          register int knum = (int) maxradix [radix] [1] - 1;
-          do                                    // Output knum digits.
-          {
-            buf_ [i++] = ps [ (int) (lnum % radix) ];
-            lnum /= radix;                      // Output digits.
-          }
-          while (--knum != 0);
+          long lnum;                   // Integer.
+          lnum = (long)mod_.loword();  // Output of module.
+          for (;;)                     // Repeat cycle
+          {                            // once or twice.
+              int knum = (int)maxradix[radix][1] - 1;
+              do  // Output knum digits.
+              {
+                  buf_[i++] = ps[(int)(lnum % radix)];
+                  lnum /= radix;  // Output digits.
+              } while (--knum != 0);
 
-          assert (lnum >= 0);                   // Debug check.
-          assert (lnum < (long) radix);         // Debug check.
-          buf_ [i++] = ps [(int)(lnum)];        // The last digit.
+              assert(lnum >= 0);            // Debug check.
+              assert(lnum < (long)radix);   // Debug check.
+              buf_[i++] = ps[(int)(lnum)];  // The last digit.
 
-          if (kdiv [0] == 0) break;             // Is there quotient?
-          lnum = (long) div [0].loword();       // Output of quotient.
-          kdiv [0] = 0;                         // div [0] is free.
+              if (kdiv[0] == 0)
+                  break;                     // Is there quotient?
+              lnum = (long)div[0].loword();  // Output of quotient.
+              kdiv[0] = 0;                   // div [0] is free.
         }
       }
 
@@ -1771,10 +1770,13 @@ char*   cBigNumber::toa (               // Conversion to string.
 //      Swapping of symbols.
 
   {
-    register EXPTR(char) ps = EXPTRTYPE(buf_);
-    while (i > j)
-    {
-      char c = ps [j]; ps [j] = ps [i]; j++; ps [i] = c; i--;
+      EXPTR(char) ps = EXPTRTYPE(buf_);
+      while (i > j) {
+          char c = ps[j];
+          ps[j] = ps[i];
+          j++;
+          ps[i] = c;
+          i--;
     }
   }
 
