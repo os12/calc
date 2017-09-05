@@ -8,6 +8,9 @@
     <Filter Include="Code\big">
       <UniqueIdentifier>{43443d78-97cd-40c9-a799-55103f1fbbe2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Code\parser">
+      <UniqueIdentifier>{851469f7-c2ac-4e0b-bd72-95bb08834211}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="big\Cbignum.h">
@@ -43,20 +46,20 @@
     <ClInclude Include="big\Exthread.h">
       <Filter>Code\big</Filter>
     </ClInclude>
-    <ClInclude Include="parser.h">
-      <Filter>Code</Filter>
-    </ClInclude>
     <ClInclude Include="utils.h">
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="scanner.h">
-      <Filter>Code</Filter>
-    </ClInclude>
     <ClInclude Include="tests.h">
       <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>Code\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="scanner.h">
+      <Filter>Code\parser</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -78,12 +81,6 @@
     <ClCompile Include="big\Prime.cpp">
       <Filter>Code\big</Filter>
     </ClCompile>
-    <ClCompile Include="parser.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
-    <ClCompile Include="scanner.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>Code</Filter>
     </ClCompile>
@@ -93,11 +90,17 @@
     <ClCompile Include="main.cpp">
       <Filter>Code</Filter>
     </ClCompile>
-    <ClCompile Include="result.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
     <ClCompile Include="tests.cpp">
       <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.cpp">
+      <Filter>Code\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="result.cpp">
+      <Filter>Code\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="scanner.cpp">
+      <Filter>Code\parser</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
