@@ -2,13 +2,11 @@ digraph {
     node [rx=5 ry=5 ]
     BinOp [labelType="html"
        label="BinOp: <span style='color:blue;'>Plus</span>"];
-    BinOp2 [labelType="html" label="BinOp: <span style='color:blue;'>Pow</span>"];
     T1 [labelType="html" label="Terminal: <span style='color:blue;'>1</span>"];
+    BinOp2 [labelType="html" label="BinOp: <span style='color:blue;'>Pow</span>"];
     T2 [labelType="html" label="Terminal: <span style='color:blue;'>2</span>"];
     T3 [labelType="html" label="Terminal: <span style='color:blue;'>3</span>"];
-    BinOp -> BinOp2;
+    BinOp -> BinOp2 -> T2;
     BinOp -> T1;
-    BinOp2 -> T2;
     BinOp2 -> T3;
 }
-  
