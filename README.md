@@ -52,27 +52,31 @@ BinaryOp: Plus
 		Terminal: 3
 </pre>
 </td>
-<td>
-<img src="https://github.com/os12/calc/raw/master/docs/expr1.png" alt="expr1 graph">
-</td>
+<td><img src="https://github.com/os12/calc/raw/master/docs/expr1.png" alt="expr1 graph"></td>
 </tr>
-</table>
-
-* Expression: `10-2-3`
-    ```
-    BinaryOp: BMinus
-    	BinaryOp: BMinus
-    		Terminal: 10
-    		Terminal: 2
-    	Terminal: 3
-    ```
-* Expression: `1--1`
-    ```
+<tr><td colspan="2">Expression: <b>10-2-3</b></td></tr>
+<tr>
+<td>
+<pre>
+BinaryOp: BMinus
+	BinaryOp: BMinus
+		Terminal: 10
+		Terminal: 2
+	Terminal: 3
+</pre>
+</td><td><img src="https://github.com/os12/calc/raw/master/docs/expr2.png" alt="expr2 graph"></td>
+</tr>
+<tr><td colspan="2">Expression: <b>1--1</b></td></tr>
+<tr>
+<td>
+<pre>
     BinaryOp: BMinus
     	Terminal: 1
     	UnaryOp: UMinus
     		Terminal: 1
-    ```
+</pre></td>
+<td><img src="https://github.com/os12/calc/raw/master/docs/expr3.png" alt="expr3 graph"></td></tr>
+</table>
 
 #### The scanner
 The scanner is a templated class that operates on a STL-style range defined by two iterators. It produces the following token types on demand:
