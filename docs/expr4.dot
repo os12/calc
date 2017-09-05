@@ -1,0 +1,13 @@
+digraph {
+    BinOp [label="*"];
+    T1 [labelType="html" label="1"];
+    BinOp2 [labelType="html" label="+"];
+    T2 [labelType="html" label="2"];
+    BinOp3 [labelType="html" label="*"];
+    T3 [labelType="html" label="3"];
+    T4 [labelType="html" label="4"];
+    BinOp -> BinOp2 -> BinOp3 -> T3;
+    BinOp2 -> T2;
+    BinOp -> T1;
+    BinOp3 -> T4;
+}
