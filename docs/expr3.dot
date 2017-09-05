@@ -1,0 +1,10 @@
+digraph {
+    node [rx=5 ry=5 ]
+    BinOp [labelType="html"
+       label="BinOp: <span style='color:blue;'>BMinus</span>"];
+    T1 [labelType="html" label="Terminal: <span style='color:blue;'>1</span>"];
+    UnOp [labelType="html" label="UnaryOp: <span style='color:blue;'>UMinus</span>"];
+    T2 [labelType="html" label="Terminal: <span style='color:blue;'>1</span>"];
+    BinOp -> UnOp -> T2;
+    BinOp -> T1;
+}
