@@ -39,7 +39,7 @@ Here are a few examples taken directly from the calculator's debug output:
 
 <table>
 <tr>
-<th>Debug output</th><th>Graph</th>
+<th>Debug output</th><th>AST in graphical form</th>
 </tr>
 <tr><td colspan="2">Expression: <b>1 + 2**3</b></td></tr>
 <tr>
