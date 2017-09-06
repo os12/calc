@@ -136,6 +136,10 @@ private:
     bool VariableSizedToken(bool eof, Token* t);
 
     enum class State { None, TwoChar, VarSized } state_ = State::None;
+    friend std::ostream& operator<<(std::ostream& stream, State s) {
+        stream << static_cast<int>(s);
+        return stream;
+    }
 
     // Contains the input needed for processing multi-char tokens.
     std::deque<char> buf_;

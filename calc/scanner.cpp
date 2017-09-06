@@ -153,8 +153,8 @@ bool Buffer::FetchQueued(bool eof, Token* t) {
     if (buf_.empty())
         return false;
 
-    DCHECK(buf_.size() == 1 && state_ == State::None)
-        << "Expecting a single terminating char!";
+    DCHECK_EQ(buf_.size(), 1);
+    DCHECK_EQ(state_, State::None);
 
     switch (buf_.front()) {
     case ' ':
@@ -162,7 +162,7 @@ bool Buffer::FetchQueued(bool eof, Token* t) {
     case '\r':
     case '\n':
         // Eat whitespace
-        buf_.erase(buf_.begin(), buf_.begin() + 1);
+        buf_.pop_front();
         return false;
 
     case '-':
@@ -182,8 +182,6 @@ bool Buffer::FetchQueued(bool eof, Token* t) {
 
     // Deal with Mult/Exp as they start with '*'.
     case '*':
-      state_ = State::TwoChar;
-      return false;
 
     // Start a two-character token: <<, >>
     case '<':
