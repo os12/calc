@@ -260,6 +260,11 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
             }
             break;
         }
+
+        // This improves error messanging for cases like "10foobar".
+        if (isalpha(*it))
+            throw Exception("Malformed base/" + std::to_string(base) +
+                            " integer starting with: '" + number + *it + "'");
         break;
     }
 
