@@ -28,6 +28,22 @@ Here is the language grammar in something very close to the [BNF](https://en.wik
 <constant>    ::= PI
 <args>        := <expression> [ COMA <args> ]
 ```
+
+#### Operators
+The code parses C-style expressions using the aforementioned grammar. The `<expression>` rule allows for an arbitrary long string of terms connected with binary operators, that must be put in order. That is done by building what is known as an [operator precedence parser](https://en.wikipedia.org/wiki/Operator-precedence_parser) which puts the operators in the following order:
+* (lowest) Or    
+* Xor   
+* And   
+*    LShift
+*    RShift
+*    BMinus
+*    Plus  
+*    Mult  
+*   Div   
+*    Pow   
+*   UMinus
+* (highest) Not   
+
 #### The AST
 The abstract syntax tree is built out of the following four node types:
 * `Terminal` - represents a single terminal such as a number or a symbolic constant.
@@ -35,13 +51,13 @@ The abstract syntax tree is built out of the following four node types:
 * `UnaryUp` - represents a unary operator such as "-".
 * `Function` - represents a unary/binary function such as "sin", "abs", etc.
 
-Here are a few examples taken directly from the calculator's debug output:
+Here are a few examples taken directly from the calculator's debug output. Note that binary operators must be executed in a left-associative fashion.
 
 <table>
 <tr>
 <th>Debug output</th><th>AST in graphical form</th>
 </tr>
-<tr><td colspan="2">Expression: <b>1 + 2**3</b></td></tr>
+<tr><td colspan="2">Walking AST for exression: <b>1 + 2**3</b></td></tr>
 <tr>
 <td>
 <pre>
@@ -54,7 +70,7 @@ BinaryOp: Plus
 </td>
 <td><img src="https://github.com/os12/calc/raw/master/docs/expr1.png" alt="expr1 graph"></td>
 </tr>
-<tr><td colspan="2">Expression: <b>10-2-3</b></td></tr>
+<tr><td colspan="2">Walking AST for exression: <b>10-2-3</b></td></tr>
 <tr>
 <td>
 <pre>
@@ -66,7 +82,7 @@ BinaryOp: BMinus
 </pre>
 </td><td><img src="https://github.com/os12/calc/raw/master/docs/expr2.png" alt="expr2 graph"></td>
 </tr>
-<tr><td colspan="2">Expression: <b>1--1</b></td></tr>
+<tr><td colspan="2">Walking AST for exression: <b>1--1</b></td></tr>
 <tr>
 <td>
 <pre>
