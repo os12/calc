@@ -48,7 +48,7 @@ The code parses C-style expressions using the aforementioned grammar. The `<expr
 The abstract syntax tree is built out of the following four node types:
 * `Terminal` - represents a single terminal such as a number or a symbolic constant.
 * `BinaryOp` - represents a binary operator such as "*" or "<<".
-* `UnaryUp` - represents a unary operator such as "-".
+* `UnaryOp` - represents a unary operator such as "-".
 * `Function` - represents a unary/binary function such as "sin", "abs", etc.
 
 Here are a few examples taken directly from the calculator's debug output. Note that binary operators must be executed in a left-associative fashion.
