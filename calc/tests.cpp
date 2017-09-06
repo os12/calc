@@ -76,13 +76,21 @@ bool Run() {
     Check32("12    ", 12);
     Check32("12\t", 12);
 
-    // malformed expressions
+    // ill-formed expressions
     CheckInvalid("12(");
     CheckInvalid("12+");
     CheckInvalid("+");
     CheckInvalid("+12");
     CheckInvalid("(12");
     CheckInvalid(")12");
+
+    // ill-formed numbers
+    CheckInvalid(".");
+    CheckInvalid("0x");
+    CheckInvalid("0x.");
+    CheckInvalid("0x10.");
+    CheckInvalid(".0x");
+    CheckInvalid(".a");
 
     // C-style math
     Check32("1<<2", 4);

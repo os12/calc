@@ -21,8 +21,12 @@ const std::map<Token::Type, Operator> _known_bin_ops = {{Token::Minus, Operator:
                                                         {Token::Xor, Operator::Xor},
                                                         {Token::Pow, Operator::Pow}};
 
+bool IsHex(char c) {
+    return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
+}
+
 bool IsHexOrFloatDigit(char c) {
-    return isdigit(c) || c == '.' || (toupper(c) >= 'A' && toupper(c) <= 'F');
+    return IsHex(c) || c == '.';
 }
 
 bool NumberContainsHexChars(const std::string &s) {
@@ -236,19 +240,32 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
     std::string number;
     int base = 10;
 
+    // Consume the hex "0x" prefix and note the change of base.
     if (buf_.size() >= 2 && std::string(&buf_[0], 2) == "0x") {
         base = 16;
         it += 2;
     }
 
+    // Consume numeric/hex chars.
     while (it != buf_.end()) {
-        if (IsHexOrFloatDigit(*it))
-            number += *(it++);
-        else
+        switch (base) {
+        case 10:
+            if (IsHexOrFloatDigit(*it)) {
+                number += *(it++);
+                continue;
+            }
             break;
+        case 16:
+            if (IsHex(*it)) {
+                number += *(it++);
+                continue;
+            }
+            break;
+        }
+        break;
     }
 
-    if (number.empty()) {
+    if (number.empty() || number == ".") {
         if (it != buf_.end())
             throw Exception("Malformed base/" + std::to_string(base) +
                             " integer starting with '" + std::string(1, buf_.front()) +
