@@ -115,7 +115,7 @@ cBigNumber& cBigNumber::setexbits   (CBNL b)
 //      Implementation of service conversions
 //================================================
 
-cBigNumber& cBigNumber::fit()
+cBigNumber& cBigNumber::normalize()
 {
   if (length() == 0) checkexpand (1);
   checkindex (cBigNumberFit (EXPTRTYPE(*this)));
@@ -884,7 +884,7 @@ cBigNumber& cBigNumber::submul (CBNL a, CBNL b)
 
 cBigNumber& cBigNumber::setdivmod (cBigNumber& a, const cBigNumber& b)
 {
-  checkexpand (a.fit().length() + 2);
+  checkexpand (a.normalize().length() + 2);
   cBigNumberMModDiv (EXPTRTYPE(a), CBPTRTYPE(b), EXPTRTYPE(*this));
   a.checkindex (a.length());
   checkindex (length());
@@ -893,7 +893,7 @@ cBigNumber& cBigNumber::setdivmod (cBigNumber& a, const cBigNumber& b)
 
 cBigNumber& cBigNumber::setdivmod (cBigNumber& a, CBNL b)
 {
-  checkexpand (a.fit().length() + 2);
+  checkexpand (a.normalize().length() + 2);
   cBigNumberMModDiv (EXPTRTYPE(a), CBPTRTYPE(_cBigLong(b)),
                      EXPTRTYPE(*this));
   a.checkindex (a.length());
@@ -903,7 +903,7 @@ cBigNumber& cBigNumber::setdivmod (cBigNumber& a, CBNL b)
 
 cBigNumber& cBigNumber::setsqrtrm (cBigNumber& a)
 {
-  checkexpand (a.fit().length() / 2 + 1);
+  checkexpand (a.normalize().length() / 2 + 1);
   if (a.hiword() >= 0)
     cBigNumberMRmSqrt (EXPTRTYPE(a), EXPTRTYPE(*this));
   else
@@ -1024,7 +1024,7 @@ cBigNumber& cBigNumber::setdivtab (const cBigNumber& a, const cBigNumber& b,
   cBigNumber cBigNumberLastDivMod;
 #endif//_CBIGNUM_MT
   cBigNumberLastDivMod = a;
-  checkexpand (cBigNumberLastDivMod.fit().length() + 2);
+  checkexpand (cBigNumberLastDivMod.normalize().length() + 2);
   cBigNumberMModDivShlTab (EXPTRTYPE(cBigNumberLastDivMod), CBPTRTYPE(b), k,
                            EXPTRTYPE(*this));
   cBigNumberLastDivMod.checkindex (cBigNumberLastDivMod.length());
@@ -1049,7 +1049,7 @@ cBigNumber& cBigNumber::setdivtab (CBNL a, const cBigNumber& b, size_t k)
 cBigNumber& cBigNumber::setmodtab (const cBigNumber& a, const cBigNumber& b,
                                    size_t k)
 {
-  *this = a; fit();
+  *this = a; normalize();
   cBigNumberMModShlTab (EXPTRTYPE(*this), CBPTRTYPE(b), k);
   checkindex (length());
   return *this;
@@ -1066,7 +1066,7 @@ cBigNumber& cBigNumber::setmodtab (CBNL a, const cBigNumber& b, size_t k)
 cBigNumber& cBigNumber::setdivmodtab (cBigNumber& a, const cBigNumber& b,
                                       size_t k)
 {
-  checkexpand (a.fit().length() + 2);
+  checkexpand (a.normalize().length() + 2);
   cBigNumberMModDivShlTab (EXPTRTYPE(a), CBPTRTYPE(b), k, EXPTRTYPE(*this));
   a.checkindex (a.length());
   checkindex (length());
@@ -1543,246 +1543,247 @@ cBigNumber& cBigNumber::set (           // Conversion from string.
 //      cBigNumber_showbase   add indicator of radix (0 or 0x).
 //      cBigNumber_showpos    show sign for positive numbers.
 
-char*   cBigNumber::toa (               // Conversion to string.
-                cBigString& buf_,       // Extendable buffer for conversion.
-                unsigned radix,         // Radix (2..16) or 0 (=10).
-                size_t   width,         // Minimal number of chars in string.
-                long     fill           // Fill-in character and format flags.
-        ) const                         // Returns pointer to buffer.
+char* cBigNumber::toa(  // Conversion to string.
+    cBigString& buf_,   // Extendable buffer for conversion.
+    unsigned radix,     // Radix (2..16) or 0 (=10).
+    size_t width,       // Minimal number of chars in string.
+    long fill           // Fill-in character and format flags.
+    ) const             // Returns pointer to buffer.
 {
-  assert (radix != 1);
-  assert (radix <= MAX_RADIX);
-  if (radix == 0) radix = 10;
-  size_t i = 0;                                 // Index in buffer.
-  _CBIGS cBigNumber num_;                       // The highest quotient.
-  num_ = *this; num_.fit();                     // Normalization.
-  if (fill & cBigNumber_unsign) num_.unsign();  // Make the number unsigned.
+    assert(radix != 1);
+    assert(radix <= MAX_RADIX);
+    if (radix == 0)
+        radix = 10;
+    size_t i = 0;            // Index in buffer.
+    _CBIGS cBigNumber num_;  // The highest quotient.
+    num_ = *this;
+    num_.normalize();
+    if (fill & cBigNumber_unsign)
+        num_.unsign();  // Make the number unsigned.
 
-//      Select conversion table.
+    //      Select conversion table.
 
-  const EXPTR(char) ps =
-      EXPTRTO(char, numtochar[(fill & cBigNumber_uppercase) != 0], sizeof(numtochar[0]));
+    const EXPTR(char) ps = EXPTRTO(
+        char, numtochar[(fill & cBigNumber_uppercase) != 0], sizeof(numtochar[0]));
 
-  //      Output of sign and prefixes.
+    //      Output of sign and prefixes.
 
-  {
-    CBNL sign = num_.comp0();                   // Sign.
-
-    if (sign < 0)
     {
-      buf_ [i++] = '-'; num_.neg();             // Output sign '-'.
-    }
-    else if (sign > 0 && (fill & cBigNumber_showpos))
-    {
-      buf_ [i++] = '+';                         // Output sign '+'.
-    }
+        CBNL sign = num_.comp0();  // Sign.
 
-    if (radix % 8 == 0 && (fill & cBigNumber_showbase))
-    {
-      buf_ [i++] = '0';                         // Output radix.
-      if (radix == 16) buf_ [i++] = ps [16];
-    }
-  }
-
-//      Output of number in reverse order.
-//
-//      Initial (non-optimized algorithm looks as the following:
-//      do
-//      {
-//        buf_ [i++] = ps [num % radix];
-//        num_ /= radix;
-//      }
-//      while (num_ != 0);
-//
-//      In optimized algorithm we use method setdivmodtab for
-//      division with module. To reduce number of divisions
-//      we use division to coefficients powradix, obtained by
-//      consequent squaring of radix.
-//
-//      As a result of division to the highest coefficient with index
-//      npmax we obtain quotient and module, which are divided to
-//      coefficient with index npmax-1, e.t.c, until as result
-//      of division to lowest coefficient witc index 0 we obtain
-//      number with fit to digital grid of type long. Long word
-//      is converted to string be consequent division to radix.
-//
-//      The highest quotient is stored in num_. Lower quotients are stored
-//      in the stack of quotients div and marked in the stack of flags kdiv.
-//      Flag is 1, if the corresponding div contains low quotient.
-//      Initially array of quotients is empty. For the highest quotient
-//      the corresponding kdiv is always 0.
-//
-//      ALGORITHM
-//      When the highest quotient is divided quotient is stored in num_
-//      and module is stored in div [npmax - 1]. When div [npmax - 1]
-//      is divided quotient is stored in div [npmax - 1] and module is
-//      stored in div [npmax - 2] e.t.c. Short module and quotient from
-//      division of div [0] are converted to string. While module is
-//      converted quotient is stored in div [0]. Then quotient div [1]
-//      is moved to div [0] and conversion is repeated, starting from
-//      div [0], then div [2] is moved to div [1] and the process is
-//      repeated from div [1], e.t.c. np to the lowers quotient, when
-//      npmax is decreased and the algorithm is repeated once again.
-
-  size_t j = i;                                 // Position of the 1st digit.
-  {
-//      Filling of stack of coefficients powradix [radix].
-//      Required number of coefficients is returned.
-
-    size_t np = SqrTab (radix, num_.length(), MAX_TAB_OUT);
-    EXPTR(cBigNumber*) powrtab = EXPTRTO(cBigNumber*,
-                                         powradixtab [radix], MAX_TAB_OUT + 1);
-    EXPTR(size_t)      powrexw = EXPTRTO(size_t,
-                                         powradixexw [radix], MAX_TAB_OUT + 1);
-
-//      Work stacks.
-
-    _CBIGS cBigNumber mod_;                     // Module of division.
-    _CBIGS exvector<cBigNumber> stk_ (MAX_TAB_OUT);
-    _CBIGS exvector<int>       kstk_ (MAX_TAB_OUT);
-    EXPTR(cBigNumber) div = EXPTRTYPE(stk_);    // Stack of quotients.
-    EXPTR(int)       kdiv = EXPTRTYPE(kstk_);   // Stack of flags.
-
-//      Progress indication.
-
-    cTTY cProgress (cBigNumberProgress);
-    size_t numlength = num_.length() * sizeof (CBNL);
-    if (numlength < cTTY_numscaleK) numlength = 0;
-
-//      Cycle of quotients.
-//      All parts if number are converted, except for the last module
-
-    size_t npmax = np;                          // Index of highest quotient.
-    for (;;)                                    // Cycle of quotient.
-    {
-      if (np == npmax)                          // The highest quotient.
-      {
-        if (numlength != 0 && np >= SHOW_NP_OUT)
-          cProgress.showScaled (cBigNumber::pszFormatting,
-            (long)(numlength - num_.length() * sizeof (long)),
-            (long)numlength);
-
-//        The highest quotient is divided to the corresponding coefficient.
-//        If result is 0 and index of the highest quotient os greater 0
-//        then index of the highest quotient decreases and the cycle
-//        repeats once again.
-
-        num_.swap (mod_);                       // Store quotient to num_
-        num_.setdivmodtab (mod_, *powrtab [np], // and module to mod_.
-                                  powrexw [np]);
-
-        if (num_.comp0() == 0)                  // Highest quotient is over,
-        {                                       // highest module remains.
-          if (np == 0) break;                   // If it is the last module
-                                                // the cycle is over,
-          num_.swap (mod_);                     // else module becomes
-          npmax = --np;                         // the highest quotient,
-          numlength = 0;                        // indication is blocked
-          assert (kdiv [np] == 0);              // and after debug check
-          continue;                             // division is repeated.
+        if (sign < 0) {
+            buf_[i++] = '-';
+            num_.neg();  // Output sign '-'.
+        } else if (sign > 0 && (fill & cBigNumber_showpos)) {
+            buf_[i++] = '+';  // Output sign '+'.
         }
-      }
-      else                                      // Find of quotient.
-      {
-        assert (np > 0);                        // Debug check.
-        assert (kdiv [np - 1] == 0);            // Debug check.
-        if (kdiv [np] == 0)                     // If no quotient is found,
-        {                                       // then go to higher
-          ++np; continue;                       // quotient.
-        }                                       // If quotient is found,
-        mod_.swap (div [np]);                   // then load div [np]
-        kdiv [np] = 0;                          // and mark is as free.
-      }
 
-//      Cycle of division of module - which index os greater then 0,
-//      divide it to the corresponding coefficient.
-
-      for (; np != 0; np--)
-      {
-        assert (kdiv [np - 1] == 0);            // Debug check.
-        kdiv [np - 1] = 1;                      // Set flag.
-        div  [np - 1].setdivmodtab (mod_, *powrtab [np - 1],
-                                           powrexw [np - 1]);
-                                                // Store quotient to div
-      }                                         // and module to mod_.
-
-//      Cycle of conversion of the lowest module and quotient,
-//      which fits to digital grid of type long.
-//      The lowest module is stored in mod_ and the lowest quotient,
-//      is stored in div [0], if it exists there (it is always so,
-//      except for case npmax == 0).
-
-      {
-          long lnum;                   // Integer.
-          lnum = (long)mod_.loword();  // Output of module.
-          for (;;)                     // Repeat cycle
-          {                            // once or twice.
-              int knum = (int)maxradix[radix][1] - 1;
-              do  // Output knum digits.
-              {
-                  buf_[i++] = ps[(int)(lnum % radix)];
-                  lnum /= radix;  // Output digits.
-              } while (--knum != 0);
-
-              assert(lnum >= 0);            // Debug check.
-              assert(lnum < (long)radix);   // Debug check.
-              buf_[i++] = ps[(int)(lnum)];  // The last digit.
-
-              if (kdiv[0] == 0)
-                  break;                     // Is there quotient?
-              lnum = (long)div[0].loword();  // Output of quotient.
-              kdiv[0] = 0;                   // div [0] is free.
+        if (radix % 8 == 0 && (fill & cBigNumber_showbase)) {
+            buf_[i++] = '0';  // Output radix.
+            if (radix == 16)
+                buf_[i++] = ps[16];
         }
-      }
+    }
 
-//      Repeat the cycle, starting form the most lower quotient.
+    //      Output of number in reverse order.
+    //
+    //      Initial (non-optimized algorithm looks as the following:
+    //      do
+    //      {
+    //        buf_ [i++] = ps [num % radix];
+    //        num_ /= radix;
+    //      }
+    //      while (num_ != 0);
+    //
+    //      In optimized algorithm we use method setdivmodtab for
+    //      division with module. To reduce number of divisions
+    //      we use division to coefficients powradix, obtained by
+    //      consequent squaring of radix.
+    //
+    //      As a result of division to the highest coefficient with index
+    //      npmax we obtain quotient and module, which are divided to
+    //      coefficient with index npmax-1, e.t.c, until as result
+    //      of division to lowest coefficient witc index 0 we obtain
+    //      number with fit to digital grid of type long. Long word
+    //      is converted to string be consequent division to radix.
+    //
+    //      The highest quotient is stored in num_. Lower quotients are stored
+    //      in the stack of quotients div and marked in the stack of flags kdiv.
+    //      Flag is 1, if the corresponding div contains low quotient.
+    //      Initially array of quotients is empty. For the highest quotient
+    //      the corresponding kdiv is always 0.
+    //
+    //      ALGORITHM
+    //      When the highest quotient is divided quotient is stored in num_
+    //      and module is stored in div [npmax - 1]. When div [npmax - 1]
+    //      is divided quotient is stored in div [npmax - 1] and module is
+    //      stored in div [npmax - 2] e.t.c. Short module and quotient from
+    //      division of div [0] are converted to string. While module is
+    //      converted quotient is stored in div [0]. Then quotient div [1]
+    //      is moved to div [0] and conversion is repeated, starting from
+    //      div [0], then div [2] is moved to div [1] and the process is
+    //      repeated from div [1], e.t.c. np to the lowers quotient, when
+    //      npmax is decreased and the algorithm is repeated once again.
 
-      np = (npmax != 0);
-    }                                           // Cycle on quotients.
+    size_t j = i;  // Position of the 1st digit.
+    {
+        //      Filling of stack of coefficients powradix [radix].
+        //      Required number of coefficients is returned.
 
-//      Output the last module.
+        size_t np = SqrTab(radix, num_.length(), MAX_TAB_OUT);
+        EXPTR(cBigNumber*)
+        powrtab = EXPTRTO(cBigNumber*, powradixtab[radix], MAX_TAB_OUT + 1);
+        EXPTR(size_t) powrexw = EXPTRTO(size_t, powradixexw[radix], MAX_TAB_OUT + 1);
+
+        //      Work stacks.
+
+        _CBIGS cBigNumber mod_;  // Module of division.
+        _CBIGS exvector<cBigNumber> stk_(MAX_TAB_OUT);
+        _CBIGS exvector<int> kstk_(MAX_TAB_OUT);
+        EXPTR(cBigNumber) div = EXPTRTYPE(stk_);  // Stack of quotients.
+        EXPTR(int) kdiv = EXPTRTYPE(kstk_);       // Stack of flags.
+
+        //      Progress indication.
+
+        cTTY cProgress(cBigNumberProgress);
+        size_t numlength = num_.length() * sizeof(CBNL);
+        if (numlength < cTTY_numscaleK)
+            numlength = 0;
+
+        //      Cycle of quotients.
+        //      All parts if number are converted, except for the last module
+
+        size_t npmax = np;  // Index of highest quotient.
+        for (;;)            // Cycle of quotient.
+        {
+            if (np == npmax)  // The highest quotient.
+            {
+                if (numlength != 0 && np >= SHOW_NP_OUT)
+                    cProgress.showScaled(cBigNumber::pszFormatting,
+                                         (long)(numlength - num_.length() * sizeof(long)),
+                                         (long)numlength);
+
+                //        The highest quotient is divided to the corresponding
+                //        coefficient. If result is 0 and index of the highest quotient os
+                //        greater 0 then index of the highest quotient decreases and the
+                //        cycle repeats once again.
+
+                num_.swap(mod_);  // Store quotient to num_
+                num_.setdivmodtab(mod_,
+                                  *powrtab[np],  // and module to mod_.
+                                  powrexw[np]);
+
+                if (num_.comp0() == 0)  // Highest quotient is over,
+                {                       // highest module remains.
+                    if (np == 0)
+                        break;              // If it is the last module
+                                            // the cycle is over,
+                    num_.swap(mod_);        // else module becomes
+                    npmax = --np;           // the highest quotient,
+                    numlength = 0;          // indication is blocked
+                    assert(kdiv[np] == 0);  // and after debug check
+                    continue;               // division is repeated.
+                }
+            } else  // Find of quotient.
+            {
+                assert(np > 0);             // Debug check.
+                assert(kdiv[np - 1] == 0);  // Debug check.
+                if (kdiv[np] == 0)          // If no quotient is found,
+                {                           // then go to higher
+                    ++np;
+                    continue;        // quotient.
+                }                    // If quotient is found,
+                mod_.swap(div[np]);  // then load div [np]
+                kdiv[np] = 0;        // and mark is as free.
+            }
+
+            //      Cycle of division of module - which index os greater then 0,
+            //      divide it to the corresponding coefficient.
+
+            for (; np != 0; np--) {
+                assert(kdiv[np - 1] == 0);  // Debug check.
+                kdiv[np - 1] = 1;           // Set flag.
+                div[np - 1].setdivmodtab(mod_, *powrtab[np - 1], powrexw[np - 1]);
+                // Store quotient to div
+            }  // and module to mod_.
+
+            //      Cycle of conversion of the lowest module and quotient,
+            //      which fits to digital grid of type long.
+            //      The lowest module is stored in mod_ and the lowest quotient,
+            //      is stored in div [0], if it exists there (it is always so,
+            //      except for case npmax == 0).
+
+            {
+                long lnum;                   // Integer.
+                lnum = (long)mod_.loword();  // Output of module.
+                for (;;)                     // Repeat cycle
+                {                            // once or twice.
+                    int knum = (int)maxradix[radix][1] - 1;
+                    do  // Output knum digits.
+                    {
+                        buf_[i++] = ps[(int)(lnum % radix)];
+                        lnum /= radix;  // Output digits.
+                    } while (--knum != 0);
+
+                    assert(lnum >= 0);            // Debug check.
+                    assert(lnum < (long)radix);   // Debug check.
+                    buf_[i++] = ps[(int)(lnum)];  // The last digit.
+
+                    if (kdiv[0] == 0)
+                        break;                     // Is there quotient?
+                    lnum = (long)div[0].loword();  // Output of quotient.
+                    kdiv[0] = 0;                   // div [0] is free.
+                }
+            }
+
+            //      Repeat the cycle, starting form the most lower quotient.
+
+            np = (npmax != 0);
+        }  // Cycle on quotients.
+
+        //      Output the last module.
+
+        {
+            long lnum = (long)mod_.loword();
+            if (lnum != 0)  // Short module.
+                do {
+                    buf_[i++] = ps[(int)(lnum % radix)];  // Output of digit.
+                } while ((lnum /= radix) != 0);
+        }
+
+        //      Output 0 for number 0.
+
+        if (i == j)
+            buf_[i++] = ps[0];  // The number is 0.
+    }
+
+    //      Output of fill-in character and finishing of string.
 
     {
-      long lnum = (long) mod_.loword();
-      if (lnum != 0)                            // Short module.
-      do
-      {
-        buf_ [i++] = ps [(int) (lnum % radix)]; // Output of digit.
-      }
-      while ((lnum /= radix) != 0);
+        if ((char)fill == '\0')
+            fill = ps[0];                          // Determine fill-in character.
+        while (i < width) buf_[i++] = (char)fill;  // Output of fill-in character.
+        buf_[i] = 0;                               // String is ready.
+        EXDEBUG(buf_.checkindex(i));
+        i--;
     }
 
-//      Output 0 for number 0.
+    //      Swapping of symbols.
 
-    if (i == j) buf_ [i++] = ps [0];            // The number is 0.
-  }
-
-//      Output of fill-in character and finishing of string.
-
-  {
-    if ((char)fill == '\0') fill = ps [0];      // Determine fill-in character.
-    while (i < width) buf_ [i++] = (char)fill;  // Output of fill-in character.
-    buf_ [i] = 0;                               // String is ready.
-    EXDEBUG (buf_.checkindex (i));
-    i--;
-  }
-
-//      Swapping of symbols.
-
-  {
-      EXPTR(char) ps = EXPTRTYPE(buf_);
-      while (i > j) {
-          char c = ps[j];
-          ps[j] = ps[i];
-          j++;
-          ps[i] = c;
-          i--;
+    {
+        EXPTR(char) ps = EXPTRTYPE(buf_);
+        while (i > j) {
+            char c = ps[j];
+            ps[j] = ps[i];
+            j++;
+            ps[i] = c;
+            i--;
+        }
     }
-  }
 
-//      Conversion is finished.
+    //      Conversion is finished.
 
-  return ((char*)(const char *)buf_);           // Return string.
+    return ((char*)(const char*)buf_);  // Return string.
 }
 
 //      Deprecated non-reenterable method returns pointer to static string,

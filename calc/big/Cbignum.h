@@ -251,7 +251,7 @@ public:
 
 //      Service conversions.
 //      Number does not change but its internal representation may change.
-  cBigNumber& fit   ();                                 // Normalize.
+  cBigNumber& normalize   ();
   cBigNumber& tab   ();                                 // Table of shifts.
   cBigNumber& smp   ();                                 // Data for mulsmp().
   cBigNumber& gc    ();                                 // Optimize memory.
@@ -1142,7 +1142,7 @@ inline cBigNumber& cBigNumber::operator /= (CBNL b)
 
 inline cBigNumber& cBigNumber::operator %= (const cBigNumber& b)
 {
-  fit();
+  normalize();
   cBigNumberMMod (EXPTRTYPE(*this), CBPTRTYPE(b));
   checkindex (length());
   return *this;
@@ -1150,7 +1150,7 @@ inline cBigNumber& cBigNumber::operator %= (const cBigNumber& b)
 
 inline cBigNumber& cBigNumber::operator %= (CBNL b)
 {
-  fit();
+  normalize();
   cBigNumberMMod (EXPTRTYPE(*this), CBPTRTYPE(_cBigLong(b)));
   checkindex (length());
   return *this;
