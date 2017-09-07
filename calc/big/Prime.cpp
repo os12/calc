@@ -1,10 +1,10 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
     Primality tests.
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Dr. Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Dr. Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify
@@ -17,18 +17,21 @@
     WILL NOT BE LIABLE FOR DATA LOSS, DAMAGES, LOSS OF PROFITS OR
     ANY OTHER KIND OF LOSS WHILE USING OR MISUSING THIS SOFTWARE.
 -------------------------------------------------------------- */
+#include <limits.h>
 #define DISALLOW_EXARRAY_SHORTTYPE
 #include "Cbignum.h"
 
-#if     ULONG_MAX > 0xFFFFFFFFUL
+#ifndef _CBIGNUM_HARDWARE_DIV
+#if     UCBNL_MAX > 0xFFFFFFFFUL
 #if 1
 #define _CBIGNUM_HARDWARE_DIV
 #endif
-#else //ULONG_MAX
+#else //UCBNL_MAX
 #if 0
 #define _CBIGNUM_HARDWARE_DIV
 #endif
-#endif//ULONG_MAX
+#endif//UCBNL_MAX
+#endif//_CBIGNUM_HARDWARE_DIV
 
 #ifdef  _MSC_VER
 #pragma auto_inline (off)

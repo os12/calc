@@ -1,9 +1,9 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify
@@ -55,14 +55,8 @@
 
 //================================================
 //      Allocation and index check options.
-//      _CBIGNUM_DEF_ALLOC  allocate memory in default constructor
-//                          as in versions 1.x of class.
 //      _CBIGNUM_NCHECKPTR  do not check indexes for input arrays.
 //================================================
-
-#if 0
-#define _CBIGNUM_DEF_ALLOC
-#endif
 
 #if 0
 #define _CBIGNUM_NCHECKPTR
@@ -178,18 +172,18 @@ typedef exarray<char> cBigString;
 class cBigNumber: public exblock<CBNL>
 {
 protected:
+  static CBNL _stub [(EXALLOC_EXTRA_ITEMS(CBNL) > 2?
+                      EXALLOC_EXTRA_ITEMS(CBNL) : 2)];
 /*
-  void  create()                // Called instead of checkexpand (1) for fast
-  {                             // allocation of memory is not allocated yet.
+  void  create ()               // Test method for non-normalized zero.
+  {
     e = (CBNL *) exmalloc (EXCALCBLOCKSIZE_1);
     len = max_size (EXCALCBLOCKSIZE_1);
   }
 */
-  void  create (CBNL b = 0)     // Optimized methods for creating of number
+  void  create (CBNL b = 0)     // Optimized method for creating of number
   {                             // with minimal size and given initial value.
-#ifndef _CBIGNUM_DEF_ALLOC
-    if (b == 0) { e = stub(); len = 0; } else
-#endif//_CBIGNUM_DEF_ALLOC
+    if (b == 0) { e = _stub; len = 0; } else
     {
       e = (CBNL *) exmalloc (EXCALCBLOCKSIZE_1);
       len = max_size (EXCALCBLOCKSIZE_1);
@@ -203,21 +197,13 @@ protected:
 public:
 
 //      Constructors.
-#ifndef _CBIGNUM_DEF_ALLOC
-  cBigNumber ()                 { e = stub(); len = 0; }// Default (0).
-#else //_CBIGNUM_DEF_ALLOC
-  cBigNumber ()                 { create (0);   }       // Default (0).
-#endif//_CBIGNUM_DEF_ALLOC
+  cBigNumber ()                 { e = _stub; len = 0; } // Default (0).
   cBigNumber (CBNL b)           { create (b);   }       // Number.
   cBigNumber (const cBigNumber&);                       // Copying.
   cBigNumber (const char* psz, unsigned radix);         // String.
 
 //      Destructor.
-#ifndef _CBIGNUM_DEF_ALLOC
   ~cBigNumber()                 { if (len) exfree (e);  }
-#else //_CBIGNUM_DEF_ALLOC
-  ~cBigNumber()                 { exfree (e);           }
-#endif//_CBIGNUM_DEF_ALLOC
 
 //      Internal representation of number.
   size_t      length  () const  { return (size_t)(*e);} // Number of words.
@@ -244,11 +230,8 @@ public:
   cBigNumber& gc    ();                                 // Optimize memory.
   cBigNumber& pack  ();                                 // Truncate memory.
 
-//      Method clear() from Exarray.h sets number to 0 and frees memory,
-//      here we must redefine if freeing is not allowed.
-#ifdef  _CBIGNUM_DEF_ALLOC
-  void        clear ();                                 // Set 0 and optimize.
-#endif//_CBIGNUM_DEF_ALLOC
+//      Clearing with optimizing of memory.
+  void        clear ();                                 // Set 0, optimize.
 
 //      Fast inline test for normalized or zero length 0:
 //          0 if number is 0 with code of length() <= 1
@@ -426,19 +409,21 @@ public:
   cBigNumber& submulsmp   (const cBigNumber&, CBNL, size_t k = 0);
 
 //      Division and module of preliminary prepared operands.
-//      Operands must have identical signs. Dividend must be normalized,
-//      divider must contain table of shifts, prepared by tab().
-//      and must not overlap with buffer of result.
-  cBigNumber& setdivtab (const cBigNumber&, const cBigNumber&, size_t k = 0);
-  cBigNumber& setdivtab (CBNL, const cBigNumber&, size_t k = 0);
-  cBigNumber& setmodtab (const cBigNumber&, const cBigNumber&, size_t k = 0);
-  cBigNumber& setmodtab (CBNL, const cBigNumber&, size_t k = 0);
+//      Operands must have identical signs. Divider must contain table of
+//      shifts, prepared by tab() and must not overlap with buffer of result.
+  cBigNumber& divtab      (const cBigNumber&, size_t k = 0);
+  cBigNumber& divtab      (CBNL, size_t k = 0);
+  cBigNumber& modtab      (const cBigNumber&, size_t k = 0);
+  cBigNumber& modtab      (CBNL, size_t k = 0);
+  cBigNumber& setdivtab   (const cBigNumber&, const cBigNumber&, size_t k = 0);
+  cBigNumber& setdivtab   (CBNL, const cBigNumber&, size_t k = 0);
+  cBigNumber& setmodtab   (const cBigNumber&, const cBigNumber&, size_t k = 0);
+  cBigNumber& setmodtab   (CBNL, const cBigNumber&, size_t k = 0);
 
 //      Division with module of preliminary prepared operands.
-//      Operands must have identical signs, must not overlap with buffer of
-//      result and each other. Dividend must be normalized,
-//      divider must contain table of shifts, prepared by tab().
-  cBigNumber& setdivmodtab    (cBigNumber&, const cBigNumber&, size_t k = 0);
+//      Operands must have identical signs, must not overlap each other and
+//      buffer of result. Divider must contain table of shifts.
+  cBigNumber& setdivmodtab(cBigNumber&, const cBigNumber&, size_t k = 0);
 
 //      Messages.
 static  const char* pszConverting;
@@ -626,10 +611,14 @@ void   _CBNL_C  cBigNumberCopy
 void    cBigNumberCompl   (const CBPTR(CBNL) p1, EXPTR(CBNL) p);
 void    cBigNumberCopyShl (const CBPTR(CBNL) p1, size_t k1, EXPTR(CBNL) p);
 void    cBigNumberCopyShr (const CBPTR(CBNL) p1, size_t k1, EXPTR(CBNL) p);
+void   _CBNL_C  cBigNumberCopyShrToM  (const CBPTR(CBNL) p1, size_t k1, EXPTR(CBNL) p);
+void   _CBNL_C  cBigNumberCopyShrUToM (const CBPTR(CBNL) p1, size_t k1, EXPTR(CBNL) p);
+void   _CBNL_C  cBigNumberClearTo (CBPTR(CBNL) p1, size_t n);
 void    cBigNumberCutOut  (const CBPTR(CBNL) p1, size_t k1, size_t n,
                                  EXPTR(CBNL) p);
 size_t _CBNL_C _cBigNumberNeg
                           (const CBPTR(CBNL) p1, EXPTR(CBNL) p);
+void    cBigNumberMNegF         (EXPTR(CBNL) p1);
 size_t _cBigNumberMInc          (EXPTR(CBNL) p1);
 size_t _cBigNumberMDec          (EXPTR(CBNL) p1);
 size_t _cBigNumberMMul2         (EXPTR(CBNL) p1);
@@ -693,8 +682,11 @@ void    cBigNumberMSubMul (const CBPTR(CBNL) p1, const CBPTR(CBNL) p2,
                                  EXPTR(CBNL) p);
 void    cBigNumberMul     (const CBPTR(CBNL) p1, const CBPTR(CBNL) p2,
                                  EXPTR(CBNL) p);
-void   _CBNL_C  cLongMul  (CBNL, CBNL, CBNL p [2]);
-void   _CBNL_C  cULongMul (unsigned CBNL, unsigned CBNL, unsigned CBNL p [2]);
+CBNL   _CBNL_C  cLongMul  (CBNL, CBNL, CBNL p [2]);
+unsigned
+CBNL   _CBNL_C  cULongMul (unsigned CBNL, unsigned CBNL, unsigned CBNL p [2]);
+CBNL   _CBNL_C  cLongMDivMod    (CBNL p1 [2], CBNL l2);
+CBNL   _CBNL_C  cLongMod  (const CBNL p1 [2], CBNL l2);
 void    cBigNumberDiv0();
 void    cBigNumberMModDivShlTab (EXPTR(CBNL) p1, const CBPTR(CBNL) p2,
                                  size_t k2, EXPTR(CBNL) p);
@@ -843,24 +835,19 @@ inline unsigned CBNL _CBNL_C cLongRandom (unsigned long (*pfnRand)())
 
 inline cBigNumber::cBigNumber (const cBigNumber& b)
 {
-  e = stub(); len = 0;                                  // Initialization by 0.
-#ifndef _CBIGNUM_DEF_ALLOC
+  len = 0;
   if (b._testnot0() != 0)
-#endif//_CBIGNUM_DEF_ALLOC
   {
     checkexpand (b.length());                           // Set size.
     cBigNumberCopy (CBPTRTYPE(b), EXPTRTYPE(*this));    // Copying.
     checkindex (length());                              // Debug check.
   }
+  else e = _stub;                                       // Initialization by 0.
 }
 
 inline cBigNumber::cBigNumber (const char* psz, unsigned radix)
 {
-#ifndef _CBIGNUM_DEF_ALLOC
-  e = stub(); len = 0;                                  // Initialization by 0.
-#else //_CBIGNUM_DEF_ALLOC
-  create (0);                                           // Create number.
-#endif//_CBIGNUM_DEF_ALLOC
+  e = _stub; len = 0;                                   // Initialization by 0.
   set (psz, radix);                                     // Parse constant.
 }
 
@@ -941,8 +928,8 @@ inline cBigNumber& cBigNumber::unsign()
 {
   if (hiword() < 0L)
   {
-    size_t len = length() + 1;
-    checkexpand (len); e [0] = (CBNL)len; e [len] = 0;
+    size_t l = length() + 1;
+    checkexpand (l); e [0] = (CBNL)l; e [l] = 0;
   }
   return *this;
 }
@@ -953,9 +940,7 @@ inline cBigNumber& cBigNumber::unsign()
 
 inline cBigNumber& cBigNumber::set (const cBigNumber& b)
 {
-#ifndef _CBIGNUM_DEF_ALLOC
   if ((e [0] | b._testnot0()) != 0)
-#endif//_CBIGNUM_DEF_ALLOC
   {
     checkexpand (b.length());
     cBigNumberCopy (CBPTRTYPE(b), EXPTRTYPE(*this));
@@ -966,9 +951,7 @@ inline cBigNumber& cBigNumber::set (const cBigNumber& b)
 
 inline cBigNumber& cBigNumber::set (CBNL b)
 {
-#ifndef _CBIGNUM_DEF_ALLOC
   if ((e [0] | b) != 0)
-#endif//_CBIGNUM_DEF_ALLOC
   {
     checkexpand (1); e [0] = 1; e [1] = b;
     checkindex (1);
@@ -1154,34 +1137,100 @@ inline cBigNumber& cBigNumber::setr (const cBigNumber& b, size_t k)
 }
 
 //================================================
+//      Implementation of combined operations.
+//================================================
+
+inline cBigNumber& cBigNumber::setdivmod (cBigNumber& a, const cBigNumber& b)
+{
+  checkexpand (a.normalize().length() + 2);
+  cBigNumberMModDiv (EXPTRTYPE(a), CBPTRTYPE(b), EXPTRTYPE(*this));
+  a.checkindex (a.length());
+  checkindex (length());
+  return *this;
+}
+
+inline cBigNumber& cBigNumber::setdivmod (cBigNumber& a, CBNL b)
+{
+  checkexpand (a.normalize().length() + 2);
+  cBigNumberMModDiv (EXPTRTYPE(a), CBPTRTYPE(_cBigLong(b)), EXPTRTYPE(*this));
+  a.checkindex (a.length());
+  checkindex (length());
+  return *this;
+}
+
+//================================================
+//      Implementation of operations on
+//      preliminary prepared operands.
+//================================================
+
+inline cBigNumber& cBigNumber::divtab (const cBigNumber& b, size_t k)
+{
+  cBigNumber cBigNumberLastDivMod;
+  swap (cBigNumberLastDivMod);
+  return setdivmodtab (cBigNumberLastDivMod, b, k);
+}
+
+inline cBigNumber& cBigNumber::divtab (CBNL b, size_t k)
+{
+  cBigNumber cBigNumberLastDivMod;
+  swap (cBigNumberLastDivMod);
+  return setdivmodtab (cBigNumberLastDivMod, b, k);
+}
+
+inline cBigNumber& cBigNumber::modtab (const cBigNumber& b, size_t k)
+{
+  normalize();
+  cBigNumberMModShlTab (EXPTRTYPE(*this), CBPTRTYPE(b), k);
+  checkindex (length());
+  return *this;
+}
+
+inline cBigNumber& cBigNumber::modtab (CBNL b, size_t k)
+{
+  normalize();
+  cBigNumberMModShlTab (EXPTRTYPE(*this), CBPTRTYPE(_cBigLong(b)), k);
+  checkindex (length());
+  return *this;
+}
+
+inline cBigNumber& cBigNumber::setdivmodtab (cBigNumber& a,
+                                       const cBigNumber& b, size_t k)
+{
+  checkexpand (a.normalize().length() + 2);
+  cBigNumberMModDivShlTab (EXPTRTYPE(a), CBPTRTYPE(b), k, EXPTRTYPE(*this));
+  a.checkindex (a.length());
+  checkindex (length());
+  return *this;
+}
+
+//================================================
 //      Implementation of check of range.
 //================================================
 
 inline  CBNL    cBigNumber::toCBNL()  const
 {
-  if (size() == 0)      return (0);
-  if (length() > 1)     erange();
-  return (hiword());
+  if (bits() >= CHAR_BIT * sizeof (CBNL)) erange();
+  return (loword());
 }
 
 inline  long    cBigNumber::tolong()  const
 {
   CBNL n = toCBNL();
-  if ((long) n != n)    erange();
+  if ((long) n != n)  erange();
   return ((long)n);
 }
 
 inline  int     cBigNumber::toint()   const
 {
   CBNL n = toCBNL();
-  if ((int) n != n)     erange();
+  if ((int) n != n)   erange();
   return ((int)n);
 }
 
 inline  short   cBigNumber::toshort() const
 {
   CBNL n = toCBNL();
-  if ((short) n != n)   erange();
+  if ((short) n != n) erange();
   return ((short)n);
 }
 

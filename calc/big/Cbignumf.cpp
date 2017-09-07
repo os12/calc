@@ -1,10 +1,10 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
     Service functions.
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify

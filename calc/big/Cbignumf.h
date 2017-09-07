@@ -1,10 +1,10 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
     Macro parameters for base functions.
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify
@@ -35,8 +35,8 @@
 //================================================
 //      Enabling of hardware optimization.
 //================================================
-//      _CBIGNUM_HARDWARE_CBR   operations with carry.
-//      _CBIGNUM_HARDWARE_MUL   multiplying.
+//      _CBIGNUM_HARDWARE_CBR   operations with carry/borrow.
+//      _CBIGNUM_HARDWARE_MUL   multiplication with double-word result.
 //      _CBIGNUM_HARDWARE_DIV   dividing.
 
 #ifdef  _CBIGNUM_ASM
@@ -47,13 +47,13 @@
 #endif
 #endif//_CBNL_CBR
 
+#endif//_CBIGNUM_ASM
+
 #ifdef  _CBNL_MUL
 #if 1
 #define _CBIGNUM_HARDWARE_MUL
 #endif
 #endif//_CBNL_MUL
-
-#endif//_CBIGNUM_ASM
 
 #if 0
 #define _CBIGNUM_HARDWARE_DIV
@@ -88,14 +88,26 @@
 //                              hardware multiplication, if in use).
 //
 //      _CBIGNUM_SHIFTTAB_DIV   build shift table for accelerating
-//                              of division and module, if dividend
-//                              have _CBNL_TAB_MIN or more words
-//                              then divider but no more then
-//                              _CBNL_TAB_MAX words.
+//                              of division and module, if divider
+//                              have at least _CBNL_TAB_MIN less
+//                              words then dividend but no more
+//                              then _CBNL_TAB_MAX words.
 //
-//      _CBIGNUM_REDUCE_JUMPS   Use code with extra operations to
+//      _CBIGNUM_SMALL_DIV      use special algorithms for small
+//                              divider and module, currently
+//                              single-word (1) and double-word (2)
+//                              value.
+//
+//      _CBIGNUM_SMALL_POWMOD   use special algorithm for power by
+//                              small, currently single-word value.
+//
+//      _CBIGNUM_REVERSE_MOD    calculate single-word module thereby
+//                              reverse multiplication after hardware
+//                              division. Turned off by default.
+//
+//      _CBIGNUM_REDUCE_JUMPS   use code with extra operations to
 //                              reduce number of conditional jumps.
-//                              No effect on popular microprocessors.
+//                              Reserved fo possible future use.
 
 #if 1
 #define _CBIGNUM_KARATSUBA_MUL
@@ -115,6 +127,18 @@
 
 #if 1
 #define _CBIGNUM_SHIFTTAB_DIV
+#endif
+
+#if 1
+#define _CBIGNUM_SMALL_DIV 2
+#endif
+
+#if 1
+#define _CBIGNUM_SMALL_POWMOD
+#endif
+
+#if 0
+#define _CBIGNUM_REVERSE_MOD
 #endif
 
 #if 0
@@ -143,6 +167,9 @@
 //      _CBNL_TAB_MAX           maximal size of divider, for which
 //                              its table of shifts may be build.
 //
+//      _CBNL_KARATSUBA_MIN     minimal size of operands to implement
+//                              Karatsuba multiplication.
+//
 //      _CBNL_MUL_OPT           optimal size of piece of multiplicand
 //                              for block hardware multiplication,
 //                              when Karatsuba method is not applicable;
@@ -152,17 +179,18 @@
 //                              for block hardware multiplication,
 //                              when Karatsuba method is not applicable.
 //
-//      _CBNL_KARATSUBA_MIN     minimal size of operands to implement
-//                              Karatsuba multiplication.
+//      Here size is number of CBNL words in the code of number.
 //
-//      Here size is number of CBNL C words in the code of number.
+//      _CBNL_HARDDIV_BITS      minimal difference in number of bits in
+//                              dividend and divider for which hardware
+//                              division is more effective then binary.
 
 #define _CBNL_TAB_MIN   (3)
-#define _CBNL_TAB_OPT   (((sizeof(size_t))<=2? 120: 7680)/\
+#define _CBNL_TAB_OPT   (((sizeof(size_t)<=2)? 120: 7680)/\
                          (sizeof (CBNL) * sizeof (CBNL)) - 3)
 #define _CBNL_TAB_HIGH  (_CBNL_TAB_OPT + _CBNL_TAB_OPT / 2)
-#define _CBNL_TAB_MAX   ((EXSIZE_T_MAX & (size_t)0xFFFFFFFFUL)/\
-                         (256 * sizeof (CBNL) * sizeof (CBNL)))
+#define _CBNL_TAB_MAX   ((EXSIZE_T_MAX & (size_t)0x7FFFFFFFUL)/\
+                         (1024 * sizeof (CBNL)))
 
 #ifndef _CBIGNUM_HARDWARE_MUL
 #define _CBNL_KARATSUBA_MIN     (100)
@@ -171,5 +199,7 @@
 #define _CBNL_MUL_OPT   (7680 / sizeof (CBNL) - 3)
 #define _CBNL_MUL_HIGH  (_CBNL_MUL_OPT + _CBNL_MUL_OPT / 2)
 #endif//_CBIGNUM_HARDWARE_MUL
+
+#define _CBNL_HARDDIV_BITS 10
 
 #endif//_CBIGNUMF_H

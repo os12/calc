@@ -1,10 +1,10 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
     Base functions in machine-independent form.
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify
@@ -31,29 +31,277 @@
 #include "Cbignum.h"
 #define BITS    (CHAR_BIT * sizeof (CBNL))
 
-static int count_floor2nBITS()                  // Maximal power of 2
-{                                               // not greater BITS-1,
-  int n = 2; while (n <= (BITS-1)/2) n <<= 1;   // usually BITS/2.
-  return n;
-}
-static int floor2nBITSm1 = count_floor2nBITS() - 1;
-
 #ifdef  _MSC_VER
 #pragma auto_inline (off)
 #endif/*_MSC_VER*/
 
-//================================================
-//      Enabling of Cbignumf.cpp optimization.
-//================================================
-//      _CBIGNUM_OPTIMIZED_COPY     copying.
+static int count_floor2nBITS()                  // Maximal power of 2
+{                                               // not greater BITS-1,
+  int n = 2; while (n <= (BITS-1)/2) n <<= 1;   // usually BITS/2.
+  return (n);
+}
+static int floor2nBITS = count_floor2nBITS();
+static int floor2nBITSm1 = floor2nBITS - 1;
 
-#ifdef  _CBIGNUM_ASM
+//================================================
+//      Macro for compiler intrinsic functions.
+//================================================
+//      _addCBNL    (l1,l2,*p)  add with returning of carry
+//      _adcCBNL  (c,l1,l2,*p)  add with carry
+//      _subCBNL    (l1,l2,*p)  sub with returning of borrow
+//      _sbbCBNL  (c,l1,l2,*p)  sub with borrow
+//      _muldCBNL   (l1,l2,*p)  signed multiplication to double word
+//      _umuldCBNL  (l1,l2,*p)  unsigned multiplication to double word
+//      _ushldCBNL  (ll,lh,sh)  unsigned left shift of double word
+//      _ushrdCBNL  (ll,lh,sh)  unsigned right shift of double word
+//      _ushld1CBNL (ll,lh)     unsigned one-bit left shift of double word
+//      _ushrd1CBNL (ll,lh)     unsigned one-bit right shift of double word
+//      Shift functions returns high word.
+//      _btCBNL     (num,sh)    extract bit by number
+//      _ubsfCBNL   (*p,num)    find lowest meaning bit
+//      _ubsrCBNL   (*p,num)    find highest meaning bit
+//      _utzcntCBNL (num)       count low zero bits
+//      Bit search functions are defined for Visual C++ only.
 
-#if 1
-#define _CBIGNUM_OPTIMIZED_COPY
+#ifdef  _CBNL_MI
+
+#include <intrin.h>
+
+// Not available in Visual Studio 2005-2012
+#if     _MSC_VER >= 1800
+
+#ifdef  _M_IX86
+#pragma intrinsic(_addcarry_u32)
+#pragma intrinsic(_subborrow_u32)
+#define _addCBNL(l1,l2,p)   _addcarry_u32(0,l1,l2,(unsigned*)p)
+#define _adcCBNL(c,l1,l2,p) _addcarry_u32(c,l1,l2,(unsigned*)p)
+#define _subCBNL(l1,l2,p)   _subborrow_u32(0,l1,l2,(unsigned*)p)
+#define _sbbCBNL(c,l1,l2,p) _subborrow_u32(c,l1,l2,(unsigned*)p)
+#endif//_M_IX86
+
+#ifdef  _M_AMD64
+#pragma intrinsic(_addcarry_u64)
+#pragma intrinsic(_subborrow_u64)
+#define _addCBNL(l1,l2,p)   _addcarry_u64(0,l1,l2,p)
+#define _adcCBNL(c,l1,l2,p) _addcarry_u64(c,l1,l2,p)
+#define _subCBNL(l1,l2,p)   _subborrow_u64(0,l1,l2,p)
+#define _sbbCBNL(c,l1,l2,p) _subborrow_u64(c,l1,l2,p)
+#endif//_M_AMD64
+
+#endif//_MSC_VER
+
+// 64-bit mode only
+#ifdef  _WIN64
+#ifdef  _CBIGNUM_HARDWARE_MUL
+#ifdef  _CBNL_MUL
+#pragma intrinsic(_mul128)
+#pragma intrinsic(_umul128)
+#define _muldCBNL   _mul128
+#define _umuldCBNL  _umul128
+#endif//_CBNL_MUL
+#endif//_CBIGNUM_HARDWARE_MUL
+#pragma intrinsic(__shiftleft128)
+#pragma intrinsic(__shiftright128)
+#define _ushldCBNL(ll,lh,sh) __shiftleft128(ll,lh,(unsigned char)(sh))
+#define _ushrdCBNL(ll,lh,sh) __shiftright128(ll,lh,(unsigned char)(sh))
+#if 0 // Not effective
+#define _ushld1CBNL(ll,lh)   __shiftleft128(ll,lh,1)
+#define _ushrd1CBNL(ll,lh)   __shiftright128(ll,lh,1)
+#endif
+#define _ushlCBNL(l,sh)  (l << (unsigned char)(sh))
+#define _ushrCBNL(l,sh)  (l >> (unsigned char)(sh))
+#endif//_WIN64
+
+#ifdef  _M_IX86
+#if 0 // Not effective
+#pragma intrinsic(_bittest)
+#define _btCBNL(num,sh)    _bittest((const CBNL *)&(num),(CBNL)(sh))
+#endif
+#pragma intrinsic(_BitScanForward)
+#pragma intrinsic(_BitScanReverse)
+#define _ubsfCBNL _BitScanForward
+#define _ubsrCBNL _BitScanReverse
+#endif//_M_IX86
+
+#ifdef  _WIN64
+#if 0 // Not effective
+#pragma intrinsic(_bittest64)
+#define _btCBNL(num,sh)    _bittest64((const CBNL *)&(num),(CBNL)(sh))
+#endif
+#pragma intrinsic(_BitScanForward64)
+#pragma intrinsic(_BitScanReverse64)
+#define _ubsfCBNL _BitScanForward64
+#define _ubsrCBNL _BitScanReverse64
+#endif//_WIN64
+
+#if     _MSC_VER >= 1500
+#ifdef  __AVX2__ // Intel Haswell+ & AMD Excavator+
+
+#ifdef  _M_IX86
+#pragma intrinsic(__lzcnt)
+#define _ulzcntCBNL __lzcnt
+#endif//_M_IX86
+
+#ifdef  _M_AMD64
+#pragma intrinsic(__lzcnt64)
+#define _ulzcntCBNL __lzcnt64
+#endif//_M_AMD64
+
+#endif//__AVX2__
+#endif//_MSC_VER
+
+#endif//_CBNL_MI
+
+//================================================
+//      Externally implemented intrinsics.
+//================================================
+
+#ifdef  __cplusplus
+extern "C" {
+#endif//__cplusplus
+
+#ifndef _muldCBNL
+CBNL   _CBNL_C  _muldCBNL  (CBNL, CBNL, CBNL*);
 #endif
 
-#endif//_CBIGNUM_ASM
+#ifndef _umuldCBNL
+unsigned
+CBNL   _CBNL_C  _umuldCBNL (unsigned CBNL, unsigned CBNL, unsigned CBNL*);
+#endif
+
+#ifdef  __cplusplus
+}
+#endif//__cplusplus
+
+//================================================
+//      Portable implementation of intrinsics.
+//================================================
+
+#ifndef _addCBNL
+inline
+unsigned char _addCBNL  (unsigned CBNL l1, unsigned CBNL l2, unsigned CBNL *p)
+{
+  return ((*p = l1 + l2) < l1);
+}
+#endif
+
+#ifndef _adcCBNL
+inline
+unsigned char _adcCBNL (unsigned char c,
+                        unsigned CBNL l1, unsigned CBNL l2, unsigned CBNL *p)
+{
+  *p = l1 + l2 + c; return (*p < l1 || *p == l1 && c != 0);
+}
+#endif
+
+#ifndef _subCBNL
+inline
+unsigned char _subCBNL (unsigned CBNL l1, unsigned CBNL l2, unsigned CBNL *p)
+{
+  return ((*p = l1 - l2) > l1);
+}
+#endif
+
+#ifndef _sbbCBNL
+inline
+unsigned char _sbbCBNL (unsigned char c,
+                        unsigned CBNL l1, unsigned CBNL l2, unsigned CBNL *p)
+{
+  *p = l1 - l2 - c; return (*p > l1 || *p == l1 && c != 0);
+}
+#endif
+
+#ifndef _ushldCBNL
+inline
+unsigned CBNL _ushldCBNL (unsigned CBNL ll, unsigned CBNL lh, unsigned CBNC sh)
+{
+//assert (~0U % BITS == BITS-1);
+//return ((lh << sh) + (ll >> ((~sh) & (BITS-1)) >> 1));
+  assert (sh < BITS);
+  return ((lh << sh) + (ll >> (BITS-1-sh) >> 1));
+}
+#endif
+
+#ifndef _ushrdCBNL
+inline
+unsigned CBNL _ushrdCBNL (unsigned CBNL ll, unsigned CBNL lh, unsigned CBNC sh)
+{
+//assert (~0U % BITS == BITS-1);
+//return ((ll >> sh) + (lh << ((~sh) && (BITS-1)) << 1));
+  assert (sh < BITS);
+  return ((ll >> sh) + (lh << (BITS-1-sh) << 1));
+}
+#endif
+
+#ifndef _ushld1CBNL
+inline
+unsigned CBNL _ushld1CBNL (unsigned CBNL ll, unsigned CBNL lh)
+{
+  return ((lh << 1) + (ll >> (BITS-1)));
+}
+#endif
+
+#ifndef _ushrd1CBNL
+inline
+unsigned CBNL _ushrd1CBNL (unsigned CBNL ll, unsigned CBNL lh)
+{
+  return ((ll >> 1) + (lh << (BITS-1)));
+}
+#endif
+
+#ifndef _ushlCBNL
+inline
+unsigned CBNL _ushlCBNL (unsigned CBNL l, unsigned CBNC sh)
+{
+  return (l << sh);
+}
+#endif
+
+#ifndef _ushrCBNL
+inline
+unsigned CBNL _ushrCBNL (unsigned CBNL l, unsigned CBNC sh)
+{
+  return (l >> sh);
+}
+#endif
+
+#ifndef _btCBNL
+inline
+unsigned char _btCBNL (CBNL num, unsigned CBNC sh)
+{
+  return ((num & ((CBNL)1 << sh)) != 0);
+}
+#endif
+
+#ifndef _ulzcntCBNL
+inline
+unsigned CBNL _ulzcntCBNL (unsigned CBNL num)
+{
+#ifdef  _ubsrCBNL
+  unsigned long n;
+  return (BITS - 1 - (unsigned CBNL)(_ubsrCBNL (&n, num)? n: -1));
+#else
+  return (unsigned CBNL)(BITS - cULongBits(num));
+#endif
+}
+#endif
+
+//================================================
+//      Macro with alternative implementations
+//      for testing of speed in cBigNumberPowMod.
+//================================================
+
+#define _USHLD1CBNL(ll,lh) { lh = _ushld1CBNL (ll, lh); ll += ll; }
+
+#ifdef  _addCBNL
+#ifndef _USHLD1CBNL
+#define _USHLD1CBNL(ll,lh) { lh = lh + lh + _addCBNL (ll, ll, &ll); }
+#endif
+#ifndef _USHLD1CBNL
+#define _USHLD1CBNL(ll,lh) { unsigned CBNL _h;\
+           _adcCBNL (_addCBNL (ll, ll, &ll), lh, lh, &_h); lh = _h; }
+#endif
+#endif
 
 //================================================
 //      Service functions.
@@ -141,7 +389,7 @@ void    cBigNumberInfo (                        // Information (short dump).
         )
 {
   size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
-  cBigNumberMessages << cHexDump (n1? p1 [n1]: 0);
+  cBigNumberMessages << cHexDump (p1 [n1]);
   if (n1 > 1)
     cBigNumberMessages << "... (" << (CBNL)(n1 * sizeof (CBNL)) << " bytes)\n";
 }
@@ -187,15 +435,20 @@ size_t  cBigNumberWords (                       // Number of meaning words.
 
 int     cLongBits (CBNL num)                    // Number of meaning bits
 {                                               // in the range 0..BITS-1.
-  int n = 0;
   num ^= (num >> (BITS-1));                     // Negative number.
-  int k = floor2nBITSm1;                        // Shift ..15,7,3,1.
+#ifdef  _ubsrCBNL
+  unsigned long n;
+  return (_ubsrCBNL (&n, num)? (int)n + 1: 0);
+#else //_ubsrCBNL
+  int n = 0;
+  int k = floor2nBITSm1;                        // Shift ..31,15,7,3,1.
   do
   {
     int k0 = (((num >> k) == 0) - 1) & (k + 1); num >>= k0; n += k0;
   }
   while ((k >>= 1) != 0);
   return (n += (num > 0));                      // Shift 0.
+#endif//_ubsrCBNL
 }
 
 //      In unsigned number meaning bits are most senior bit which
@@ -203,15 +456,20 @@ int     cLongBits (CBNL num)                    // Number of meaning bits
 
 int     cULongBits (unsigned CBNL num)          // Number of meaning bits
 {                                               // in the range 0..BITS.
+#ifdef  _ubsrCBNL
+  unsigned long n;
+  return (_ubsrCBNL (&n, num)? (int)n + 1: 0);
+#else //_ubsrCBNL
   int n = (((CBNL)num >= 0) - 1); num &= ~n;
       n &= BITS;                                // BITS meaning bits.
-  int k = floor2nBITSm1;                        // Shift ..15,7,3,1.
+  int k = floor2nBITSm1;                        // Shift ..31,15,7,3,1.
   do
   {
     int k0 = (((num >> k) == 0) - 1) & (k + 1); num >>= k0; n += k0;
   }
   while ((k >>= 1) != 0);
   return (n += (num > 0));                      // Shift 0.
+#endif//_ubsrCBNL
 }
 
 //      Count meaning bits in unlimited number.
@@ -257,9 +515,14 @@ size_t  cBigNumberExWords (                     // Number of low 0-words.
 
 int     cLongExBits (CBNL num)                  // Number of low 0-bits
 {                                               // in the range 0..BITS-1.
+#ifdef  _ubsfCBNL
+  unsigned long n;
+  return (_ubsfCBNL (&n, num)? (int)n: 0);
+#else //_ubsfCBNL
   int n = 0;
   if (num) while ((num & (CBNL)1) == 0) { ++n; num >>= 1; }
   return (n);
+#endif //_ubsfCBNL
 }
 
 //      Count low 0-bits in unlimited number.
@@ -295,7 +558,7 @@ int     cLongExactLog2 (CBNL num)               // Either exact log2 or -1.
 //================================================
 
 //      The number is normalized if minimal number of CBNL words
-//      are used for storing, but no less then one word:
+//      are used for storing, but no less than one word:
 //      - if length()>1, the high word differs from sign extension
 //        of word preceding the high word;
 //      - zero is represented by single 0-word.
@@ -306,26 +569,26 @@ size_t _CBNL_C  cBigNumberIsFit (               // Check of normalization.
 {                                               // return 1 else 0.
   size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
 
-  if (n1 > 1) return ((p1 [n1] != (p1 [n1-1] >> (BITS-1))));
+  if (n1 > 1) return ((p1 [n1] != (p1 [n1 - 1] >> (BITS-1))));
 
   return (n1);                                  // Number of words is 1 or 0.
 }
 
-//      Normalization to minimal number of words, not less then 1.
+//      Normalization to minimal number of words, not less than 1.
 
 size_t _CBNL_C _cBigNumberFit (                 // Normalization.
                         EXPTR(CBNL) p1          // Buffer with number.
         )                                       // Size of buffer >= 2.
 {
-    size_t n1 = (size_t)(*p1);  // Number of words.
-    p1 += n1;                   // Preparing of pointer.
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  p1 += n1;                                     // Preparing of pointer.
 
-    if (n1)                            // If bits of the high word
-    {                                  // and high bit of the word
-        CBNL pass, lp = *p1;           // before high are all 0 or 1
-        do
-            continue;  // then delete the high word.
-        while (--n1 != 0 && (pass = lp, lp = p1[-1], --p1, pass == (lp >> (BITS - 1))));
+  if (n1)                                       // If bits of the high word
+  {                                             // and high bit of the word
+    CBNL pass, lp = *p1--;                      // before high are all 0 or 1
+    do continue;                                // then delete the high word.
+    while (--n1 != 0 &&
+        (pass = lp, lp = *p1--, pass == (lp >> (BITS-1))));
   }                                             // If no words at all
   else { p1 [1] = 0; }                          // then add word 0.
 
@@ -334,7 +597,7 @@ size_t _CBNL_C _cBigNumberFit (                 // Normalization.
 //#define cBigNumberFit(p1)     (size_t)(*(p1)=_cBigNumberFit(p1))
 
 //      Denormalization with increasing of number of words up to
-//      given number. If given number is not greater then initial
+//      given number. If given number is not greater than initial
 //      number of words function adds one more word.
 //
 //      Function returns NOT normalized result.
@@ -344,14 +607,14 @@ size_t _CBNL_C _cBigNumberFitTo (               // Denormalization.
                         size_t      n           // Number of words.
         )                                       // Size of buffer no less
 {                                               // max (*p1 + 2, n + 1).
-    size_t n1 = (size_t)(*p1);                  // Number of words.
-    CBNL pass = p1[n1] >> (BITS - 1);           // Carry.
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  CBNL pass = p1 [n1] >> (BITS-1);              // Carry.
 
-    do
-        p1[++n1] = pass;  // Expand the carry.
-    while (n1 < n);
+  do
+    p1 [++n1] = pass;                           // Expand the carry.
+  while (n1 < n);
 
-    return (n1);  // Number of words.
+  return (n1);                                  // Number of words.
 }
 //#define cBigNumberFitTo(p1,n) (size_t)(*(p1)=_cBigNumberFitTo(p1,n))
 
@@ -365,7 +628,8 @@ size_t _CBNL_C _cBigNumberFitTo (               // Denormalization.
 //      from high words to low words until mismatch.
 //      Comparison of the high words is signed,
 //      comparison of lower words is unsigned.
-
+//
+//      Function do not require operands to be normalized.
 //      For optimization purposes algorithmic equivalent
 //      is applied instead of actual expanding of sign bit.
 
@@ -381,7 +645,7 @@ int    _CBNL_C  cBigNumberComp (                // Comparison of p1, p2.
   CBNL lp1 = 0;                                 // Current word of p1.
   CBNL lp2 = 0;                                 // Current word of p2.
 
-  //      Comparison of sign words.
+//      Comparison of sign words.
 
   if (n1) lp1 = p1 [n1--];                      // Sign word of p1.
   if (n2) lp2 = p2 [n2--];                      // Sign word of p2.
@@ -441,12 +705,12 @@ NotSameSignWord:                                // Sign words are not equal.
 //      Special comparison for division.
 //      It is assumed:
 //      - the numbers are normalized.
-//      - size of first number not less then size of second number.
+//      - size of first number not less than size of second number.
 //      Before comparison second number is left shifted to make sizes the same.
 
 int    _CBNL_C  cBigNumberCompHigh (            // Comparison from high words.
                 const   CBPTR(CBNL) p1,         // Number.
-                const   CBPTR(CBNL) p2          // Number.
+                const   CBPTR(CBNL) p2          // Number, not longer p1.
         )                                       // Returns -1 if p1 <  p2
                                                 // Returns  0 if p1 == p2
                                                 // Returns  1 if p1  > p2
@@ -456,8 +720,8 @@ int    _CBNL_C  cBigNumberCompHigh (            // Comparison from high words.
   assert (n1 >= n2);                            // Check of size.
   assert (n2 > 0);                              // Check of size.
 
-  CBNL lp1 = p1[n1--];                          // Current word of p1.
-  CBNL lp2 = p2[n2--];                          // Current word of p2.
+  CBNL lp1 = p1 [n1--];                         // Current word of p1.
+  CBNL lp2 = p2 [n2--];                         // Current word of p2.
   assert (!n1 || lp1 != (p1 [n1] >> (BITS-1))); // Check of normalization.
   assert (!n2 || lp2 != (p2 [n2] >> (BITS-1))); // Check of normalization.
 
@@ -498,8 +762,8 @@ int    _CBNL_C  cBigNumberCompHigh (            // Comparison from high words.
 //      It is assumed that the number has no redundant high 0-words,
 //      otherwise wrong negative result is possible.
 
-
-inline  CBNL    cBigNumberNot0  (               // Comparison with 0:
+inline
+CBNL    cBigNumberNot0  (                       // Comparison with 0:
                 const CBPTR(CBNL) p1_debug      // returns 0 if p1 == 0
                 )                               // else non 0.
 {
@@ -512,7 +776,7 @@ inline  CBNL    cBigNumberNot0  (               // Comparison with 0:
 //      Copying and bit-wise inversion.
 //================================================
 
-#ifndef _CBIGNUM_OPTIMIZED_COPY                 // If not in Cbignumf.cpp.
+#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp
 
 //      Exact copying.
 //
@@ -534,7 +798,7 @@ void   _CBNL_C  cBigNumberCopy (                // Copying p = p1.
   }
 }
 
-#endif//_CBIGNUM_OPTIMIZED_COPY
+#endif//_CBIGNUM_ASM
 
 //      Bit-wise inversion.
 //
@@ -621,7 +885,96 @@ void    cBigNumberCopyShr (                     // Shift p = p1 >> (BITS*k1).
   }
 }
 
-//      Clipping of some number of words and adding of high 0 word.
+#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp
+
+//      Special right shift with denormalization, combining
+//      cBigNumberCopyShr() and cBigNumberFitTo().
+//
+//      Shift is equivalent to division by 2 in power (BITS * k1).
+//      Denormalization increases number of words up to k1,
+//      if k1 is greater and adds one more more word.
+//
+//      For optimization purposes it is assumed that:
+//      - Size of number to shift is greater than k1.
+//
+//      Functions return NOT normalized result.
+
+void   _CBNL_C  cBigNumberCopyShrToM (          // Denormalized shift
+                                                // p = p1 >> (BITS*k1).
+                const   CBPTR(CBNL) p1,         // Number to shift, *p1 > k1.
+                        size_t      k1,         // Degree of shift in words.
+                        EXPTR(CBNL) p           // Buffer of size
+                                                //   max (k1, *p1 - k1) + 1.
+        )                                       // p1, p may overlap.
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
+  assert (n1 > k1);                             // Check of size.
+  n1 -= k1;                                     // Number of words to copy.
+  p1 += ++k1;                                   // Shift.
+
+  if (k1 <= n1) k1 = n1 + 1;                    // Number of words in result.
+  *p++ = (CBNL) k1;                             // Number of words in result.
+  k1 -= n1;                                     // Number of expanding words.
+
+  CBNL lp1;
+  do
+    *p++ = lp1 = *p1++;                         // Copying of words.
+  while (--n1 != 0);
+
+  lp1 >>= (BITS-1);                             // Carry.
+  do
+    *p++ = lp1;                                 // Expanding the carry.
+  while (--k1 != 0);
+}
+
+//      Here the number to shift is considered to be UNSIGNED.
+
+void   _CBNL_C  cBigNumberCopyShrUToM (         // Denormalized unsigned shift
+                                                // p = p1 >> (BITS*k1).
+                const   CBPTR(CBNL) p1,         // Unsigned number, *p1 > k1.
+                        size_t      k1,         // Degree of shift in words.
+                        EXPTR(CBNL) p           // Buffer of size
+                                                //   max (k1, *p1 - k1) + 1.
+        )                                       // p1, p may overlap.
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
+  assert (n1 > k1);                             // Check of size.
+  n1 -= k1;                                     // Number of words to copy.
+  p1 += ++k1;                                   // Shift.
+
+  if (k1 <= n1) k1 = n1 + 1;                    // Number of words in result.
+  *p++ = (CBNL) k1;                             // Number of words in result.
+  k1 -= n1;                                     // Number of expanding words.
+
+  do
+    *p++ = *p1++;                               // Copying of words.
+  while (--n1 != 0);
+
+  do
+    *p++ = 0;                                   // Expanding zero.
+  while (--k1 != 0);
+}
+
+//      Denormalization with clearing of number, faster
+//      alternative to clearing with cBigNumberFitTo().
+//
+//      Function returns NOT normalized result.
+
+void   _CBNL_C  cBigNumberClearTo (             // Denormalized clearing.
+                        EXPTR(CBNL) p1,         // Buffer of size n + 1.
+                        size_t      n           // Number of words.
+        )
+{
+  *p1++ = (CBNL) n;                             // Number of words.
+  if (n)
+  do
+    *p1++ = 0;                                  // Clear.
+  while (--n != 0);
+}
+
+#endif//_CBIGNUM_ASM
+
+//      Clipping of some number of words and adding of high zero word.
 //
 //      Function returns NOT normalized result.
 
@@ -678,7 +1031,7 @@ size_t _CBNL_C _cBigNumberNeg (                 // Sign inversion p = -p1.
       {                                         // If there are:
         do                                      // Cycle of bit-wise inversion.
           { ++p1; ++p; *p = lp = ~*p1; }        // bit-wise inversion of word.
-        while (--n != 0);                       // End of cycle of inversion.
+        while (--n != 0);                       // End of cycle.
         return (n1 - (lp == (p [-1] >> (BITS-1))));
       }                                         // Remove redundant high word.
                                                 // If no wore words then
@@ -691,6 +1044,35 @@ size_t _CBNL_C _cBigNumberNeg (                 // Sign inversion p = -p1.
   return (n1);                                  // All words are 0.
 }
 //#define cBigNumberNeg(p1,p)   (size_t)(*(p)=_cBigNumberNeg(p1,p))
+
+//      Special sign inversion without changing of size.
+//
+//      NOTE: Function does not add high zero word for maximal negative
+//            operand, thus returning the same negative value.
+//
+//      Function can return non-normalized result.
+
+void    cBigNumberMNegF (                       // Sign inversion p1 = -p1.
+                        EXPTR(CBNL) p1          // Number to invert.
+        )
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1++));       // Number of words.
+  if (n1)
+  do                                            // Cycle for sign inversion.
+  {
+    if ((*p1 = -*p1) != 0)                      // Sign inversion of word.
+    {                                           // Non-0 word obtained.
+      if (--n1 != 0)                            // Are there any words anymore?
+      {                                         // If there are:
+        do                                      // Cycle of bit-wise inversion.
+          { ++p1; *p1 = ~*p1; }                 // bit-wise inversion of word.
+        while (--n1 != 0);                      // End of cycle.
+      }
+      break;
+    }
+  }
+  while ((++p1, --n1) != 0);                    // End of cycle.
+}
 
 //      Increment:
 //      1) Add 1 to words until first non-null result.
@@ -716,7 +1098,7 @@ size_t  _cBigNumberMInc (                       // Addition p1 = p1 + 1.
     {
       CBNL lp;                                  // Optimization.
       if ((*p1 = lp = *p1 + 1) != 0)            // Increment.
-      {                                         // Non 0 word obtained.
+      {                                         // Non-0 word obtained.
         if (--n != 0)                           // Are there any words anymore?
         {                                       // If one word is remained and
           if (--n != 0) return (n1);            // it is redundant, delete it.
@@ -758,7 +1140,7 @@ size_t  _cBigNumberMDec (                       // Subtraction p1 = p1 - 1.
     {
       CBNL lp;                                  // Optimization.
       if ((*p1 = lp = *p1 - 1) != ~(CBNL)0)     // Subtraction 1.
-      {                                         // Non ~0 word obtained.
+      {                                         // Non-~0 word obtained.
         if (--n != 0)                           // Are there any words anymore?
         {                                       // If one word is remained and
           if (--n != 0) return (n1);            // it is redundant, delete it.
@@ -772,7 +1154,7 @@ size_t  _cBigNumberMDec (                       // Subtraction p1 = p1 - 1.
   }
   else { *p1 = -1; n1 = 1; }                    // Normalization of empty num.
 
-  return (n1);                                  // All words are ~1.
+  return (n1);                                  // All words are ~0.
 }
 //#define cBigNumberMDec(p1)    (size_t)(*(p1)=_cBigNumberMDec(p1))
 
@@ -792,6 +1174,7 @@ size_t  _cBigNumberMMul2 (                      // Shift p1 <<= 1.
   size_t n1 = (size_t)(*p1++);                  // Number of words.
   size_t n = n1;                                // Counter of words.
   CBNL num = 0;                                 // Word before shift.
+
   if (n)
   do                                            // Cycle of shift.
   {
@@ -952,7 +1335,7 @@ void    cBigNumberTab (                         // Preparing table of shifts.
 //      Then the numbers are processed word by word.
 //
 //      Peculiarities:
-//      - The second operand must not be longer then the first one.
+//      - The second operand must not be longer than the first one.
 //      - For optimization purposes algorithmic equivalent
 //        is applied instead of actual expanding of sign bit.
 //
@@ -973,21 +1356,20 @@ size_t  _cBigNumberXor  (                       // Addition mod2 p = p1 ^ p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-      CBNL lp2 = 0;  // Current word of p2.
+    CBNL lp2 = 0;                               // Current word of p2.
 
-      //      Processing of words p1, p2.
+//      Processing of words p1, p2.
 
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
       {
-          size_t n;  // Counter of words.
-          if ((n = n2) != 0) {
-              do {
-                  *p++ = *p1++ ^ (lp2 = *p2++);
-              }                  // Cycle on p1, p2.
-              while (--n != 0);  // End of cycle on p1, p2.
-          }
+        do { *p++ = *p1++ ^ (lp2 = *p2++); }    // Cycle on p1, p2.
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Processing of remainder p1, if p1 is longer then p2.
+//      Processing of remainder p1, if p1 is longer than p2.
 
     {
       lp2 >>= (BITS-1);                         // Sign bit of p2.
@@ -1005,15 +1387,15 @@ size_t  _cBigNumberXor  (                       // Addition mod2 p = p1 ^ p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL pass;      // The high word.
-      CBNL lp;        // The previous word.
-      size_t n = n1;  // Number of words.
-      if (n)          // If bits of the high word
-      {               // and high bit of the word
-          lp = *p;    // before high are all 0 or 1
-          do
-              continue;  // then delete the high word.
-          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
+    CBNL pass;                                  // The high word.
+    CBNL lp;                                    // The previous word.
+    size_t n = n1;                              // Number of words.
+    if (n)                                      // If bits of the high word
+    {                                           // and high bit of the word
+      lp = *p;                                  // before high are all 0 or 1
+      do continue;                              // then delete the high word.
+      while (--n != 0 &&
+        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
     }                                           // If no words at all
     else { p [1] = 0; }                         // then add word 0.
 
@@ -1035,21 +1417,20 @@ size_t  _cBigNumberAnd  (                       // Conjunction p = p1 & p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-      CBNL lp2 = 0;  // Current word of p2.
+    CBNL lp2 = 0;                               // Current word of p2.
 
-      //      Processing of words p1, p2.
+//      Processing of words p1, p2.
 
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
       {
-          size_t n;  // Counter of words.
-          if ((n = n2) != 0) {
-              do {
-                  *p++ = *p1++ & (lp2 = *p2++);
-              }                  // Cycle on p1, p2.
-              while (--n != 0);  // End of cycle on p1, p2.
-          }
+        do { *p++ = *p1++ & (lp2 = *p2++); }    // Cycle on p1, p2.
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Processing of remainder p1, if p1 is longer then p2.
+//      Processing of remainder p1, if p1 is longer than p2.
 
     {
       lp2 >>= (BITS-1);                         // Sign bit of p2.
@@ -1067,21 +1448,19 @@ size_t  _cBigNumberAnd  (                       // Conjunction p = p1 & p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL pass;      // The high word.
-      CBNL lp;        // The previous word.
-      size_t n = n1;  // Number of words.
-      if (n)          // If bits of the high word
-      {               // and high bit of the word
-          lp = *p;    // before high are all 0 or 1
-          do
-              continue;  // then delete the high word.
-          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
-      }  // If no words at all
-      else {
-          p[1] = 0;
-      }  // then add word 0.
+    CBNL pass;                                  // The high word.
+    CBNL lp;                                    // The previous word.
+    size_t n = n1;                              // Number of words.
+    if (n)                                      // If bits of the high word
+    {                                           // and high bit of the word
+      lp = *p;                                  // before high are all 0 or 1
+      do continue;                              // then delete the high word.
+      while (--n != 0 &&
+        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
+    }                                           // If no words at all
+    else { p [1] = 0; }                         // then add word 0.
 
-      return (n + 1);  // Number of words p.
+    return (n + 1);                             // Number of words p.
   }
 }
 //#define cBigNumberAnd(p1,p2,p) (size_t)(*(p)=_cBigNumberAnd(p1,p2,p))
@@ -1099,21 +1478,20 @@ size_t  _cBigNumberOr  (                        // Disjunction p = p1 & p2.
   if (n1 == 0) return 0;                        // Return if 0 words.
 
   {
-      CBNL lp2 = 0;  // Current word of p2.
+    CBNL lp2 = 0;                               // Current word of p2.
 
-      //      Processing of words p1, p2.
+//      Processing of words p1, p2.
 
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
       {
-          size_t n;  // Counter of words.
-          if ((n = n2) != 0) {
-              do {
-                  *p++ = *p1++ | (lp2 = *p2++);
-              }                  // Cycle on p1, p2.
-              while (--n != 0);  // End of cycle on p1, p2.
-          }
+        do { *p++ = *p1++ | (lp2 = *p2++); }    // Cycle on p1, p2.
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Processing of remainder p1, if p1 is longer then p2.
+//      Processing of remainder p1, if p1 is longer than p2.
 
     {
       lp2 >>= (BITS-1);                         // Sign bit of p2.
@@ -1131,15 +1509,15 @@ size_t  _cBigNumberOr  (                        // Disjunction p = p1 & p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL pass;      // The high word.
-      CBNL lp;        // The previous word.
-      size_t n = n1;  // Number of words.
-      if (n)          // If bits of the high word
-      {               // and high bit of the word
-          lp = *p;    // before high are all 0 or 1
-          do
-              continue;  // then delete the high word.
-          while (--n != 0 && (pass = lp, lp = p[-1], --p, pass == (lp >> (BITS - 1))));
+    CBNL pass;                                  // The high word.
+    CBNL lp;                                    // The previous word.
+    size_t n = n1;                              // Number of words.
+    if (n)                                      // If bits of the high word
+    {                                           // and high bit of the word
+      lp = *p;                                  // before high are all 0 or 1
+      do continue;                              // then delete the high word.
+      while (--n != 0 &&
+        (pass = lp, lp = p [-1], --p, pass == (lp >> (BITS-1))));
     }                                           // If no words at all
     else { p [1] = 0; }                         // then add word 0.
 
@@ -1158,7 +1536,7 @@ size_t  _cBigNumberOr  (                        // Disjunction p = p1 & p2.
 //      with carrying (borrowing).
 //
 //      Peculiarities:
-//      - The second operand must not be longer then the first one.
+//      - The second operand must not be longer than the first one.
 //      - Functions always returns normalized number.
 //      - For optimization purposes algorithmic equivalent
 //        is applied instead of actual expanding of sign bit.
@@ -1179,42 +1557,44 @@ size_t  _cBigNumberAdd  (                       // Addition p = p1 + p2.
   assert (n1 >= n2);
   if (n1 == 0) return 0;                        // Return if 0 words.
 
-  unsigned CBNL pass = 0;  // Carry to next word of p.
-                           // carry is contained in the high bit of pass
-                           // unsigned CBNL provides for unsigned shift of pass.
+  unsigned CBNL pass = 0;                       // Carry to next word of p.
+        // carry is contained in the high bit of pass
+        // unsigned CBNL provides for unsigned shift of pass.
   {
-     CBNL lp1 = 0;                      // Current word of p1.
-     CBNL lp2 = 0;                      // Current word of p2.
+    CBNL lp1 = 0;                               // Current word of p1.
+    CBNL lp2 = 0;                               // Current word of p2.
 
-     //      Addition of words p1, p2.
+//      Addition of words p1, p2.
 
-     {
-         size_t n;  // Counter of words.
-         if ((n = n2) != 0) {
-             do  // Cycle on p1, p2.
-             {
-                 lp1 = *p1++;
-                 lp2 = *p2++;
-                 pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
-                        (lp1 & lp2);
-             } while (--n != 0);  // End of cycle on p1, p2.
-         }
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
+      {
+        do                                      // Cycle on p1, p2.
+        {
+          lp1 = *p1++; lp2 = *p2++;
+          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
+                                                           | (lp1 & lp2);
+        }
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Either carry or borrow over rest of p1 if p1 is longer then p2.
+//      Either carry or borrow over rest of p1 if p1 is longer than p2.
 
     {
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-          const CBNL* pp = p1;        // Optimization.
-          if ((lp2 & CBNL_MIN) == 0)  // p2 is not negative.
+        const CBNL *pp = p1;                    // Optimization.
+        if ((lp2 & CBNL_MIN) == 0)              // p2 is not negative.
+        {
+          do                                    // Cycle on p1.
           {
-              do  // Cycle on p1.
-              {
-                  lp1 = *pp++;
-                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
-              } while (--n != 0);  // End of cycle on p1.
+            lp1 = *pp++;
+            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
+          }
+          while (--n != 0);                     // End of cycle on p1.
         }
         else                                    // p2 is negative.
         {
@@ -1240,14 +1620,13 @@ size_t  _cBigNumberAdd  (                       // Addition p = p1 + p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL lp = *p;                               // The previous word.
-      size_t n = n1;                              // Number of words - 1.
-      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
-      {                                           // and high bit of the word
-          do
-              continue;       // before high are all 0 or 1
-          while (--n != 0 &&  // then delete the high word.
-                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
+    CBNL lp = *p;                               // The previous word.
+    size_t n = n1;                              // Number of words - 1.
+    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
+    {                                           // and high bit of the word
+      do continue;                              // before high are all 0 or 1
+      while (--n != 0 &&                        // then delete the high word.
+        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
     }
     else { p [1] = pass; }                      // Storing of the high word.
 
@@ -1276,38 +1655,40 @@ size_t  _cBigNumberSub  (                       // Subtraction p = p1 - p2.
         // unsigned CBNL provides for unsigned shift of pass.
         // initial value provides for addition of 1.
   {
-      CBNL lp1 = 0;         // Current word of p1.
-      CBNL lp2 = ~(CBNL)0;  // Current word of ~p2.
+    CBNL lp1 = 0;                               // Current word of p1.
+    CBNL lp2 = ~(CBNL)0;                        // Current word of ~p2.
 
-      //      Addition of words p1, ~p2.
+//      Addition of words p1, ~p2.
 
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
       {
-          size_t n;  // Counter of words.
-          if ((n = n2) != 0) {
-              do  // Cycle on p1, p2.
-              {
-                  lp1 = *p1++;
-                  lp2 = ~(*p2++);
-                  pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
-                         (lp1 & lp2);
-              } while (--n != 0);  // End of cycle on p1, p2.
-          }
+        do                                      // Cycle on p1, p2.
+        {
+          lp1 = *p1++; lp2 = ~(*p2++);
+          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
+                                                           | (lp1 & lp2);
+        }
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Either carry or borrow over rest of p1 if p1 is longer then p2.
+//      Either carry or borrow over rest of p1 if p1 is longer than p2.
 
     {
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-          const CBNL* pp = p1;        // Optimization.
-          if ((lp2 & CBNL_MIN) == 0)  // p2 is negative.
+        const CBNL *pp = p1;                    // Optimization.
+        if ((lp2 & CBNL_MIN) == 0)              // p2 is negative.
+        {
+          do                                    // Cycle on p1.
           {
-              do  // Cycle on p1.
-              {
-                  lp1 = *pp++;
-                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
-              } while (--n != 0);  // End of cycle on p1.
+            lp1 = *pp++;
+            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
+          }
+          while (--n != 0);                     // End of cycle on p1.
         }
         else                                    // p2 is not negative.
         {
@@ -1333,19 +1714,17 @@ size_t  _cBigNumberSub  (                       // Subtraction p = p1 - p2.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL lp = *p;                               // The previous word.
-      size_t n = n1;                              // Number of words - 1.
-      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
-      {                                           // and high bit of the word
-          do
-              continue;       // before high are all 0 or 1
-          while (--n != 0 &&  // then delete the high word.
-                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
-      } else {
-          p[1] = pass;
-      }  // Storing of the high word.
+    CBNL lp = *p;                               // The previous word.
+    size_t n = n1;                              // Number of words - 1.
+    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
+    {                                           // and high bit of the word
+      do continue;                              // before high are all 0 or 1
+      while (--n != 0 &&                        // then delete the high word.
+        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
+    }
+    else { p [1] = pass; }                      // Storing of the high word.
 
-      return (n + 1);  // Number of words p.
+    return (n + 1);                             // Number of words p.
   }
 }
 //#define cBigNumberSub(p1,p2,p) (size_t)(*(p)=_cBigNumberSub(p1,p2,p))
@@ -1369,46 +1748,50 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
         // unsigned CBNL provides for unsigned shift of pass.
         // initial value provides for addition of 1.
   {
-      CBNL lp1 = ~(CBNL)0;  // Current word of ~p1.
-      CBNL lp2 = 0;         // Current word of p2.
+    CBNL lp1 = ~(CBNL)0;                        // Current word of ~p1.
+    CBNL lp2 = 0;                               // Current word of p2.
 
-      //      Addition of words ~p1, p2.
+//      Addition of words ~p1, p2.
 
+    {
+      size_t n;                                 // Counter of words.
+      if ((n = n2) != 0)
       {
-          size_t n;  // Counter of words.
-          if ((n = n2) != 0) {
-              do  // Cycle on p1, p2.
-              {
-                  lp1 = ~(*p1++);
-                  lp2 = *p2++;
-                  pass = (~(*p++ = (pass >> (BITS - 1)) + lp1 + lp2) & (lp1 ^ lp2)) |
-                         (lp1 & lp2);
-              } while (--n != 0);  // End of cycle on p1, p2.
-          }
+        do                                      // Cycle on p1, p2.
+        {
+          lp1 = ~(*p1++); lp2 = *p2++;
+          pass = (~(*p++ = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
+                                                           | (lp1 & lp2);
+        }
+        while (--n != 0);                       // End of cycle on p1, p2.
+      }
     }
 
-//      Either carry or borrow over rest of p1 if p1 is longer then p2.
+//      Either carry or borrow over rest of p1 if p1 is longer than p2.
 
     {
       size_t n;                                 // Counter of words.
       if ((n = n1 - n2) != 0)
       {
-          const CBNL* pp = p1;        // Optimization.
-          if ((lp2 & CBNL_MIN) == 0)  // p2 is negative.
+        const CBNL *pp = p1;                    // Optimization.
+        if ((lp2 & CBNL_MIN) == 0)              // p2 is negative.
+        {
+          do                                    // Cycle on p1.
           {
-              do  // Cycle on p1.
-              {
-                  lp1 = ~(*pp++);
-                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1) & lp1;
-              } while (--n != 0);  // End of cycle on p1.
-          } else                   // p2 is not negative.
-          {
-              do  // Cycle on p1.
-              {
-                  lp1 = ~(*pp++);
-                  pass = ~(*p++ = (pass >> (BITS - 1)) + lp1 - 1) | lp1;
-              } while (--n != 0);  // End of cycle on p1.
+            lp1 = ~(*pp++);
+            pass = ~(*p++ = (pass >> (BITS-1)) + lp1) & lp1;
           }
+          while (--n != 0);                     // End of cycle on p1.
+        }
+        else                                    // p2 is not negative.
+        {
+          do                                    // Cycle on p1.
+          {
+            lp1 = ~(*pp++);
+            pass = ~(*p++ = (pass >> (BITS-1)) + lp1 - 1) | lp1;
+          }
+          while (--n != 0);                     // End of cycle on p1.
+        }
       }
     }
     --p;                                        // Preparing of pointer.
@@ -1424,19 +1807,17 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
 //      0 or 1 and coincident with expansion of sign bit of the previous word.
 
   {
-      CBNL lp = *p;                               // The previous word.
-      size_t n = n1;                              // Number of words - 1.
-      if (n && (CBNL)pass == (lp >> (BITS - 1)))  // If bits of the high word
-      {                                           // and high bit of the word
-          do
-              continue;       // before high are all 0 or 1
-          while (--n != 0 &&  // then delete the high word.
-                 (pass = lp, lp = p[-1], --p, (CBNL)pass == (lp >> (BITS - 1))));
-      } else {
-          p[1] = pass;
-      }  // Storing of the high word.
+    CBNL lp = *p;                               // The previous word.
+    size_t n = n1;                              // Number of words - 1.
+    if (n && (CBNL)pass == (lp >> (BITS-1)))    // If bits of the high word
+    {                                           // and high bit of the word
+      do continue;                              // before high are all 0 or 1
+      while (--n != 0 &&                        // then delete the high word.
+        (pass = lp, lp = p [-1], --p, (CBNL)pass == (lp >> (BITS-1))));
+    }
+    else { p [1] = pass; }                      // Storing of the high word.
 
-      return (n + 1);  // Number of words p.
+    return (n + 1);                             // Number of words p.
   }
 }
 //#define cBigNumberSubS(p1,p2,p) (size_t)(*(p)=_cBigNumberSubS(p1,p2,p))
@@ -1520,14 +1901,14 @@ size_t _CBNL_C  cBigNumberCopySkipLow0 (        // Shift p = p1 >> exwords(p1).
   return (0);                                   // containing 0 words.
 }
 
-#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp.
+#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp
 
 //      Special addition with left shift for multiplication.
 //
 //      For optimization purposes it is assumed that:
-//      - Size of the first number is not smaller then size of the second
-//        number after shift and not smaller then size of result.
-//      - Size of the second number before shift is greater then 0.
+//      - Size of the first number is not smaller than size of the second
+//        number after shift and not smaller than size of result.
+//      - Size of the second number before shift is greater than 0.
 //      Before addition one must call function cBigNumberSkipLow0()
 //      to count number of low 0-words in the second operand.
 //
@@ -1547,55 +1928,47 @@ void   _CBNL_C  cBigNumberMAddM (               // Addition p1 += p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  unsigned CBNL pass = 0;  // Carry: 0 or 1.
-                           // unsigned CBNL provides for unsigned shift of pass.
+  unsigned CBNL pass = 0;                       // Carry: 0 or 1.
+        // unsigned CBNL provides for unsigned shift of pass.
   {
-      const CBPTR(CBNL) pp = p1 + n2;  // The last word of p2.
-      p1 += _cBigNumberSkip;           // Set start of p1.
-      p2 += _cBigNumberSkip;           // Set start of p2.
-      CBNL lp1;                        // Current word of p1.
-      CBNL lp2;                        // Current word of p2.
+    const CBPTR(CBNL) ppn = p1 + n2;            // Match the last word of p2.
+    p1 += _cBigNumberSkip;                      // Set start of p1.
+    p2 += _cBigNumberSkip;                      // Set start of p2.
+    CBNL lp1;                                   // Current word of p1.
+    CBNL lp2;                                   // Current word of p2.
 
-      //      Addition of words p1, p2.
-      //      Operators of cycle calculates the following logical expression:
-      //      pass = ((~(*p1 = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
-      //                                                       | (lp1 & lp2))
-      //      Logical expression is listed by the following chain of assignments:
-      //      pass += (lp1 + lp2)     // *p1 = pass
-      //      lp1  = ~(lp1 ^ lp2)     // Assignment to lp1 releases one register.
-      //      pass = ~(pass | lp1)    // It is used identity of de Morgan.
-      //      pass |= (lp1 & lp2)     // and identity a & b = ~(a^b) & b.
-      //      Assignments are interleaved by cycle handling checks and increments
-      //      of pointers to optimize loading of Pentium pipes.
+//      Addition of words p1, p2.
+//      Operators of cycle calculates the following logical expression:
+//      pass = ((~(*p1 = (pass >> (BITS-1)) + lp1 + lp2) & (lp1 ^ lp2))
+//                                                       | (lp1 & lp2))
+//      Logical expression is listed by the following chain of assignments:
+//      pass += (lp1 + lp2)     // *p1 = pass
+//      lp1  = ~(lp1 ^ lp2)     // Assignment to lp1 releases one register.
+//      pass = ~(pass | lp1)    // It is used identity of de Morgan.
+//      pass |= (lp1 & lp2)     // and identity a & b = ~(a^b) & b.
+//      Assignments are interleaved by cycle handling checks and increments
+//      of pointers to optimize loading of Pentium pipes.
 
-      for (;;)  // Cycle on p1, p2.
-      {
-          lp1 = *p1;
-          lp2 = *p2;  // Current words of p1, p2.
-          pass += lp1;
-          lp1 ^= lp2;
-          pass += lp2;
-          lp1 = ~lp1;
-          *p1 = pass;
-          pass |= lp1;
-          lp1 &= lp2;
-          pass = ~pass;
-          ++p2;
-          pass |= lp1;
-          if (p1 >= pp)
-              break;
-          ++p1;
-          pass >>= (BITS - 1);
+    for (;;)                                    // Cycle on p1, p2.
+    {
+      lp1 = *p1;        lp2 = *p2;              // Current words of p1, p2.
+      pass += lp1;      lp1 ^= lp2;
+      pass += lp2;      lp1 = ~lp1;
+      *p1 = pass;       pass |= lp1;
+      lp1 &= lp2;       pass = ~pass;
+      ++p2;             pass |= lp1;
+      if (p1 >= ppn)    break;
+      ++p1;             pass >>= (BITS-1);
     }
     if ((CBNL)(lp2 ^= pass) >= 0) return;       // No carry.
   }
 
-//      Either carry or borrow over rest of p1 if p1 is longer then p2.
+//      Either carry or borrow over rest of p1 if p1 is longer than p2.
 //      Starting condition: p1 points to last word obtained,
 //                          pass contains carry in the high bit.
 
   {
-    CBNL lp1;                          // Current word of p1.
+    CBNL lp1;                                   // Current word of p1.
     if ((CBNL)pass < 0)                         // p2 is not negative.
     {
       do                                        // Cycle on p1.
@@ -1620,9 +1993,9 @@ void   _CBNL_C  cBigNumberMAddM (               // Addition p1 += p2<<k2*BITS.
 //      Special subtraction with left shift for multiplication.
 //
 //      For optimization purposes it is assumed that:
-//      - Size of the first number is not smaller then size of the second
-//        number after shift and not smaller then size of result.
-//      - Size of the second number before shift is greater then 0.
+//      - Size of the first number is not smaller than size of the second
+//        number after shift and not smaller than size of result.
+//      - Size of the second number before shift is greater than 0.
 //      Before subtraction one must call function cBigNumberSkipLow0()
 //      to count number of low 0-words in the second operand.
 //
@@ -1642,27 +2015,27 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  CBNL pass = 0;  // Borrow: 0 or -1.
-                  // CBNL provides for signed shift of pass.
+  CBNL pass = 0;                                // Borrow: 0 or -1.
+        // CBNL provides for signed shift of pass.
   {
-    const CBPTR(CBNL) pp = p1 + n2;             // The last word of p2.
+    const CBPTR(CBNL) ppn = p1 + n2;            // Match the last word of p2.
     p1 += _cBigNumberSkip;                      // Set start of p1.
     p2 += _cBigNumberSkip;                      // Set start of p2.
     CBNL lp1;                                   // Current word of p1.
     CBNL lp2;                                   // Current word of p2.
 
-    //      Subtraction of words p1, p2.
-    //      Operators of cycle calculates the following logical expression:
-    //      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
-    //                                                     & (~lp1 | lp2))
-    //      Logical expression is listed by the following chain of assignments:
-    //      pass += (lp1 - lp2)     // *p1 = pass
-    //      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
-    //      pass = ~pass;           // It is used identity of de Morgan
-    //      pass |= (lp1 & ~lp2)    // and identity a & ~b = (a^b) & ~b.
-    //      pass = ~pass;
-    //      Assignments are interleaved by cycle handling checks and increments
-    //      of pointers to optimize loading of Pentium pipes.
+//      Subtraction of words p1, p2.
+//      Operators of cycle calculates the following logical expression:
+//      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
+//                                                     & (~lp1 | lp2))
+//      Logical expression is listed by the following chain of assignments:
+//      pass += (lp1 - lp2)     // *p1 = pass
+//      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
+//      pass = ~pass;           // It is used identity of de Morgan
+//      pass |= (lp1 & ~lp2)    // and identity a & ~b = (a^b) & ~b.
+//      pass = ~pass;
+//      Assignments are interleaved by cycle handling checks and increments
+//      of pointers to optimize loading of Pentium pipes.
 
     for (;;)                                    // Cycle on p1, p2.
     {
@@ -1672,36 +2045,37 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
       *p1 = pass;       pass |= lp1;
       lp1 &= lp2;       pass = ~pass;
       ++p2;             pass |= lp1;
-      if (p1 >= pp)     break;
+      if (p1 >= ppn)    break;
       ++p1;             pass >>= (BITS-1);
                         pass = ~pass;
     }
     if ((CBNL)(lp2 ^= pass) >= 0) return;       // No carry or borrow.
   }
 
-//      Either carry or borrow over rest of p1 if p1 is longer then p2.
+//      Either carry or borrow over rest of p1 if p1 is longer than p2.
 //      Starting condition: p1 points to last word obtained,
 //                          pass contains ~borrow in the high bit.
 
   {
-      CBNL lp1;            // Current word of p1.
-      if ((CBNL)pass < 0)  // p2 is negative.
+    CBNL lp1;                                   // Current word of p1.
+    if ((CBNL)pass < 0)                         // p2 is negative.
+    {
+      do                                        // Cycle on p1.
       {
-          do  // Cycle on p1.
-          {
-              if (p1 >= pp)
-                  break;
-              lp1 = *++p1;
-          } while ((~(*p1 = lp1 + 1) & lp1) < 0);
-      } else  // p2 is not negative.
-      {
-          do  // Cycle on p1.
-          {
-              if (p1 >= pp)
-                  break;
-              lp1 = *++p1;
-          } while ((~(*p1 = lp1 - 1) | lp1) >= 0);
+        if (p1 >= pp) break;
+        lp1 = *++p1;
       }
+      while ((~(*p1 = lp1 + 1) & lp1) < 0);
+    }
+    else                                        // p2 is not negative.
+    {
+      do                                        // Cycle on p1.
+      {
+        if (p1 >= pp) break;
+        lp1 = *++p1;
+      }
+      while ((~(*p1 = lp1 - 1) | lp1) >= 0);
+    }
   }
 }
 
@@ -1709,9 +2083,9 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
 //
 //      For optimization purposes it is assumed that:
 //      - Numbers have the same signs.
-//      - Size of the first number is not smaller then size of the second
+//      - Size of the first number is not smaller than size of the second
 //        number after shift.
-//      - Size of the second number before shift is greater then 0.
+//      - Size of the second number before shift is greater than 0.
 //      - After subtraction number of meaning bits decreases.
 //      - After subtraction sign does not change except for case
 //        of zeroing of negative numbers.
@@ -1733,26 +2107,26 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
 
-  CBNL pass = 0;  // Borrow: 0 or -1.
-                  // CBNL provides for signed shift of pass.
+  CBNL pass = 0;                                // Borrow: 0 or -1.
+        // CBNL provides for signed shift of pass.
   {
-    const CBPTR(CBNL) pp = p1 + n2;             // The last word of p2.
+    const CBPTR(CBNL) ppn = p1 + n2;            // Match the last word of p2.
     p1 += _cBigNumberSkip;                      // Set start of p1.
     p2 += _cBigNumberSkip;                      // Set start of p2.
     CBNL lp1;                                   // Current word of p1.
     CBNL lp2;                                   // Current word of p2.
 
-    //      Subtraction of words p1, p2.
-    //      Operators of cycle calculates the following logical expression:
-    //      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
-    //                                                     & (~lp1 | lp2))
-    //      Logical expression is listed by the following chain of assignments:
-    //      pass += (lp1 - lp2)     // *p1 = pass
-    //      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
-    //      pass &=~(lp1 & ~lp2)    // It is used identity of de Morgan
-    //                              // and identity a & ~b = (a^b) & ~b.
-    //      Assignments are interleaved by cycle handling checks and increments
-    //      of pointers to optimize loading of Pentium pipes.
+//      Subtraction of words p1, p2.
+//      Operators of cycle calculates the following logical expression:
+//      pass = (((*p1 = (pass >> (BITS-1)) + lp1 - lp2) | (lp1 ^ lp2))
+//                                                     & (~lp1 | lp2))
+//      Logical expression is listed by the following chain of assignments:
+//      pass += (lp1 - lp2)     // *p1 = pass
+//      pass |= (lp1 ^= lp2)    // Assignment to lp1 releases one register.
+//      pass &=~(lp1 & ~lp2)    // It is used identity of de Morgan
+//                              // and identity a & ~b = (a^b) & ~b.
+//      Assignments are interleaved by cycle handling checks and increments
+//      of pointers to optimize loading of Pentium pipes.
 
     for (;;)                                    // Cycle on p1, p2.
     {
@@ -1760,7 +2134,7 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
       pass += lp1;      lp1 ^= lp2;
       pass -= lp2;      lp2 = ~lp2;
       *p1 = pass;       lp2 &= lp1;
-      if (p1 >= pp)     break;
+      if (p1 >= ppn)    break;
       lp2 = ~lp2;       pass |= lp1;
       ++p1;             pass &= lp2;
       ++p2;             pass >>= (BITS-1);
@@ -1782,17 +2156,13 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
 
     for (;;)
     {
-        CBNL lp1;  // The high word.
-        CBNL lp2;  // The previous word.
-        if (--n1 == 0)
-            break;  // One word remains.
-        lp2 = p1[-1];
-        --p1;
-        lp1 = pass;
-        pass = lp2;
-        lp2 >>= (BITS - 1);
-        if (lp1 != lp2)
-            break;
+      CBNL lp1;                                 // The high word.
+      CBNL lp2;                                 // The previous word.
+      if (--n1 == 0)    break;                  // One word remains.
+      lp2 = p1 [-1];    --p1;
+      lp1 = pass;       pass = lp2;
+      lp2 >>= (BITS-1);
+      if (lp1 != lp2)   break;
     }
     return (n1 + 1);                            // Number of words p.
   }
@@ -1952,140 +2322,16 @@ void    cBigNumberMSubShl (                     // Subtract p1 -= p2<<k2*BITS.
 }
 
 //================================================
-//      Functions of multiplication.
+//      Functions of multiplication that use only
+//      addition or subtraction operations.
 //================================================
-
-//      Here is portable binary implementation on standard C++.
-//      Look also Cbignumf.cpp for much faster implementation
-//      based on hardware multiplication.
-
-#ifndef _CBIGNUM_HARDWARE_MUL                   // If not in Cbignumf.cpp.
-
-//      Special functions for accumulation of multiplication with shift.
-//      Multiplicand is used as work buffer and will be overwritten.
-//
-//      Multiplier is considered to be UNSIGNED number,
-//      i.e. sign bits are interpreted as high bits.
-//
-//      Functions does not require for normalization of operands
-//      and always return normalized result.
-
-void    cBigNumberMAddMulShl (                  // Addition of multiplication
-                                                // p += p1 * p2 << k*BITS.
-                        EXPTR(CBNL) p1,         // Multiplicand in overwritten
-                                                // buffer of size *p1 + 3.
-                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
-                        size_t      k,          // Left shift of product.
-                        EXPTR(CBNL) p           // Augend in buffer of size
-                                                // max (*p, *p1 + *p2 + k) + 2.
-        )                                       // p1, p2, p may not overlap.
-{
-  assert (p1 != p);                             // Check if not overlap.
-  assert (p2 != p);                             // Check if not overlap.
-  assert (p2 != p1);                            // Check if not overlap.
-  size_t n1 = (size_t)(*p1);                    // Number of words.
-  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
-
-//      Algorithm that does not require for table of shifts.
-
-  if (n1 >= cBigNumberSkipLow0 (p1) && n2 != 0) // Are operands not empty?
-  {
-    cBigNumberFitTo (p, n1 + n2 + k + 1);       // Denormalization.
-    --n2;
-    size_t k2 = 0;
-    for (; k2 != n2; k2++)                      // Cycle on words of p2.
-    {
-      CBNL num = p2 [k2 + 1];                   // Current word of p2.
-      if (num == 0) continue;                   // Optimization.
-      CBNL mask = 1;                            // Mask for bits of num.
-      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
-      {
-        if (num & mask) cBigNumberMAddM (p, p1, k + k2);
-        if ((mask <<= 1) == 0) break;           // No more bits.
-      }                                         // End of cycle on bits of p2.
-      cBigNumberMMul2M (p1);                    // Bit shift of multiplicand.
-      cBigNumberMShrM (p1);                     // Reset of multiplicand.
-    }                                           // End of cycle on words of p2.
-    {
-      CBNL num = p2 [k2 + 1];                   // The last word of p2.
-      CBNL mask = (num != 0);                   // Mask for bits of num.
-      if (num > 0)                              // The high bit of num
-      do                                        // may be not 0.
-        mask <<= 1;                             // Shift mask and num, while
-      while ((num <<= 1) > 0);                  // the high bit of num is 0.
-      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
-      {
-        if (num & mask) cBigNumberMAddM (p, p1, k + k2);
-        if ((mask <<= 1) == 0) break;           // No more bits.
-      }                                         // End of cycle on bits of p2.
-    }
-  }
-
-  cBigNumberFit (p);                            // Normalization.
-}
-
-void    cBigNumberMSubMulShl (                  // Subtract of multiplication
-                                                // p -= p1 * p2 << k*BITS.
-                        EXPTR(CBNL) p1,         // Multiplicand in overwritten
-                                                // buffer of size *p1 + 3.
-                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
-                        size_t      k,          // Left shift of product.
-                        EXPTR(CBNL) p           // Subtrahend in buffer of size
-                                                // max (*p, *p1 + *p2 + k) + 2.
-        )                                       // p1, p2, p may not overlap.
-{
-  assert (p1 != p);                             // Check if not overlap.
-  assert (p2 != p);                             // Check if not overlap.
-  assert (p2 != p1);                            // Check if not overlap.
-  size_t n1 = (size_t)(*p1);                    // Number of words.
-  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
-
-//      Algorithm that does not require for table of shifts.
-
-  if (n1 >= cBigNumberSkipLow0 (p1) && n2 != 0) // Are operands not empty?
-  {
-    cBigNumberFitTo (p, n1 + n2 + k + 1);       // Denormalization.
-    --n2;
-    size_t k2 = 0;
-    for (; k2 != n2; k2++)                      // Cycle on words of p2.
-    {
-      CBNL num = p2 [k2 + 1];                   // Current word of p2.
-      if (num == 0) continue;                   // Optimization.
-      CBNL mask = 1;                            // Mask for bits of num.
-      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
-      {
-        if (num & mask) cBigNumberMSubM (p, p1, k + k2);
-        if ((mask <<= 1) == 0) break;           // No more bits.
-      }                                         // End of cycle on bits of p2.
-      cBigNumberMMul2M (p1);                    // Bit shift of multiplicand.
-      cBigNumberMShrM (p1);                     // Reset of multiplicand.
-    }                                           // End of cycle on words of p2.
-    {
-      CBNL num = p2 [k2 + 1];                   // The last word of p2.
-      CBNL mask = (num != 0);                   // Mask for bits of num.
-      if (num > 0)                              // The high bit of num
-      do                                        // may be not 0.
-        mask <<= 1;                             // Shift mask and num, while
-      while ((num <<= 1) > 0);                  // the high bit of num is 0.
-      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
-      {
-        if (num & mask) cBigNumberMSubM (p, p1, k + k2);
-        if ((mask <<= 1) == 0) break;           // No more bits.
-      }                                         // End of cycle on bits of p2.
-    }
-  }
-
-  cBigNumberFit (p);                            // Normalization.
-}
-
-#endif//_CBIGNUM_HARDWARE_MUL
 
 //      Special functions for accumulation of multiplication with shift.
 //      It is assumed that multiplicand contains table of shifts, obtained
 //      by cBigNumberTab(). Method is effective if size of at lease one
-//      operand is not greater then _CBNL_KARATSUBA_MIN * 2.
+//      operand is not greater than _CBNL_KARATSUBA_MIN * 2.
 //      For better performance larger operand should be placed first,
-//      except for case when it size is greater then _CBNL_TAB_OPT.
+//      except for case when it size is greater than _CBNL_TAB_OPT.
 //
 //      Multiplier is considered to be UNSIGNED number,
 //      i.e. sign bits are interpreted as high bits.
@@ -2227,7 +2473,131 @@ void    cBigNumberMSubMulShlTab (               // Subtract of multiplication
   cBigNumberFit (p);                            // Normalization.
 }
 
-#ifndef _CBIGNUM_HARDWARE_MUL                   // If not in Cbignumf.cpp.
+//================================================
+//      Functions of multiplication that use only
+//      addition, subtraction and shift operations
+//      but have alternative fast implementation
+//      if hardware multiplication is enabled.
+//================================================
+
+#if !defined (_CBIGNUM_HARDWARE_MUL) || !defined (_CBNL_MUL)
+
+//      Special functions for accumulation of multiplication with shift.
+//      Multiplicand is used as work buffer and will be overwritten.
+//
+//      Multiplier is considered to be UNSIGNED number,
+//      i.e. sign bits are interpreted as high bits.
+//
+//      Functions does not require for normalization of operands
+//      and always return normalized result.
+
+void    cBigNumberMAddMulShl (                  // Addition of multiplication
+                                                // p += p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand in overwritten
+                                                // buffer of size *p1 + 3.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Augend in buffer of size
+                                                // max (*p, *p1 + *p2 + k) + 2.
+        )                                       // p1, p2, p may not overlap.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+  assert (p2 != p1);                            // Check if not overlap.
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+//      Algorithm that does not require for table of shifts.
+
+  if (n1 >= cBigNumberSkipLow0 (p1) && n2 != 0) // Are operands not empty?
+  {
+    cBigNumberFitTo (p, n1 + n2 + k + 1);       // Denormalization.
+    --n2;
+    size_t k2 = 0;
+    for (; k2 != n2; k2++)                      // Cycle on words of p2.
+    {
+      CBNL num = p2 [k2 + 1];                   // Current word of p2.
+      if (num == 0) continue;                   // Optimization.
+      CBNL mask = 1;                            // Mask for bits of num.
+      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
+      {
+        if (num & mask) cBigNumberMAddM (p, p1, k + k2);
+        if ((mask <<= 1) == 0) break;           // No more bits.
+      }                                         // End of cycle on bits of p2.
+      cBigNumberMMul2M (p1);                    // Bit shift of multiplicand.
+      cBigNumberMShrM (p1);                     // Reset of multiplicand.
+    }                                           // End of cycle on words of p2.
+    {
+      CBNL num = p2 [k2 + 1];                   // The last word of p2.
+      CBNL mask = (num != 0);                   // Mask for bits of num.
+      if (num > 0)                              // The high bit of num
+      do                                        // may be not 0.
+        mask <<= 1;                             // Shift mask and num, while
+      while ((num <<= 1) > 0);                  // the high bit of num is 0.
+      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
+      {
+        if (num & mask) cBigNumberMAddM (p, p1, k + k2);
+        if ((mask <<= 1) == 0) break;           // No more bits.
+      }                                         // End of cycle on bits of p2.
+    }
+  }
+
+  cBigNumberFit (p);                            // Normalization.
+}
+
+void    cBigNumberMSubMulShl (                  // Subtract of multiplication
+                                                // p -= p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand in overwritten
+                                                // buffer of size *p1 + 3.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Subtrahend in buffer of size
+                                                // max (*p, *p1 + *p2 + k) + 2.
+        )                                       // p1, p2, p may not overlap.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+  assert (p2 != p1);                            // Check if not overlap.
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+//      Algorithm that does not require for table of shifts.
+
+  if (n1 >= cBigNumberSkipLow0 (p1) && n2 != 0) // Are operands not empty?
+  {
+    cBigNumberFitTo (p, n1 + n2 + k + 1);       // Denormalization.
+    --n2;
+    size_t k2 = 0;
+    for (; k2 != n2; k2++)                      // Cycle on words of p2.
+    {
+      CBNL num = p2 [k2 + 1];                   // Current word of p2.
+      if (num == 0) continue;                   // Optimization.
+      CBNL mask = 1;                            // Mask for bits of num.
+      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
+      {
+        if (num & mask) cBigNumberMSubM (p, p1, k + k2);
+        if ((mask <<= 1) == 0) break;           // No more bits.
+      }                                         // End of cycle on bits of p2.
+      cBigNumberMMul2M (p1);                    // Bit shift of multiplicand.
+      cBigNumberMShrM (p1);                     // Reset of multiplicand.
+    }                                           // End of cycle on words of p2.
+    {
+      CBNL num = p2 [k2 + 1];                   // The last word of p2.
+      CBNL mask = (num != 0);                   // Mask for bits of num.
+      if (num > 0)                              // The high bit of num
+      do                                        // may be not 0.
+        mask <<= 1;                             // Shift mask and num, while
+      while ((num <<= 1) > 0);                  // the high bit of num is 0.
+      for (;; cBigNumberMMul2M (p1))            // Cycle on bits of word of p2.
+      {
+        if (num & mask) cBigNumberMSubM (p, p1, k + k2);
+        if ((mask <<= 1) == 0) break;           // No more bits.
+      }                                         // End of cycle on bits of p2.
+    }
+  }
+
+  cBigNumberFit (p);                            // Normalization.
+}
 
 //      Special functions for accumulation of multiplication with shift.
 //      To speed up operation, functions use either Karatsuba method or
@@ -2282,8 +2652,8 @@ void    cBigNumberMAddMulShlKar (               // Addition of multiplication
     size_t n = (n1 >= n2? n1: n2 - 1) / 2;      // Size of low part.
 
 //      NOTE: To prevent overflow of p we must keep high part of p2
-//            larger then low part of p2 for rare special case when
-//            p1 is twice or more shorter then p2.
+//            larger than low part of p2 for rare special case when
+//            p1 is twice or more shorter than p2.
 
     cBigTemp c12; c12.checkexpand (n * 2 + 5);
     EXPTR(CBNL) p12 = EXPTRTYPE(c12);           // Buffer for multiplication.
@@ -2292,7 +2662,7 @@ void    cBigNumberMAddMulShlKar (               // Addition of multiplication
     cBigTemp c2; c2.checkexpand (n + 4);
     cBigNumberCopyShr (p2, n, EXPTRTYPE(c2));   // Get high part from p2 to c2.
 
-//      Size of p1 may be n or smaller if p1 is twice or more shorter then p2.
+//      Size of p1 may be n or smaller if p1 is twice or more shorter than p2.
 //      NOTE: Algorithm requires to keep c2 intact in the recursive call.
 
     if (n1 > n)
@@ -2438,8 +2808,8 @@ void    cBigNumberMSubMulShlKar (               // Subtract of multiplication
     size_t n = (n1 >= n2? n1: n2 - 1) / 2;      // Size of low part.
 
 //      NOTE: To prevent overflow of p we must keep high part of p2
-//            larger then low part of p2 for rare special case when
-//            p1 is twice or more shorter then p2.
+//            larger than low part of p2 for rare special case when
+//            p1 is twice or more shorter than p2.
 
     cBigTemp c12; c12.checkexpand (n * 2 + 5);
     EXPTR(CBNL) p12 = EXPTRTYPE(c12);           // Buffer for multiplication.
@@ -2448,7 +2818,7 @@ void    cBigNumberMSubMulShlKar (               // Subtract of multiplication
     cBigTemp c2; c2.checkexpand (n + 4);
     cBigNumberCopyShr (p2, n, EXPTRTYPE(c2));   // Get high part from p2 to c2.
 
-//      Size of p1 may be n or smaller if p1 is twice or more shorter then p2.
+//      Size of p1 may be n or smaller if p1 is twice or more shorter than p2.
 //      NOTE: Algorithm requires to keep c2 intact in the recursive call.
 
     if (n1 > n)
@@ -2680,13 +3050,22 @@ void    cBigNumberMul (                         // Multiplication p = p1 * p2.
   }
 }
 
-//      Function of CBNL multiplication.
+//================================================
+//      Implementation of intrinsic multiplication
+//      functions without use of hardware
+//      multiplication (very slow).
+//================================================
 
-void   _CBNL_C  cLongMul (                      // Multiplication l1 * l2.
+#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp
+
+//      Intrinsic function for CBNL multiplication.
+
+#ifndef _muldCBNL
+CBNL   _CBNL_C  _muldCBNL (                     // Multiplication l1 * l2.
                         CBNL    l1,             // Multiplicand.
                         CBNL    l2,             // Multiplier.
-                        CBNL    p [2]           // Result.
-        )
+                        CBNL    *p              // Hiword of result.
+        )                                       // Returns loword of result.
 {
   CBNL c1 [5]; c1 [0] = 1; c1 [1] = l1;         // Buffer for multiplicand.
   CBNL c2 [3]; c2 [0] = 1; c2 [1] = l2;         // Buffer for multiplier.
@@ -2702,17 +3081,20 @@ void   _CBNL_C  cLongMul (                      // Multiplication l1 * l2.
     cBigNumberMSubMulShl (pp1, pp2, 0, pp);     // Multiplication.
   }
 
-  p [0] = pp [1];
-  p [1] = pp [2];
+  *p = c [2];
+  return c [1];
 }
+#endif//_muldCBNL
 
-//      Function of unsigned CBNL multiplication.
+//      Intrinsic function for unsigned CBNL multiplication.
 
-void   _CBNL_C  cULongMul (                     // Multiplication l1 * l2.
+#ifndef _umuldCBNL
+unsigned
+CBNL   _CBNL_C  _umuldCBNL (                    // Multiplication l1 * l2.
                 unsigned CBNL   l1,             // Unsigned multiplicand.
                 unsigned CBNL   l2,             // Unsigned multiplier.
-                unsigned CBNL   p [2]           // Unsigned result.
-        )
+                unsigned CBNL   *p              // Unsigned hiword of result.
+        )                                       // Returns loword of result.
 {                                               // Buffer for multiplicand.
   CBNL c1 [5]; c1 [0] = 2; c1 [1] = l1; c1 [2] = 0;
   CBNL c2 [3]; c2 [0] = 1; c2 [1] = l2;         // Buffer for multiplier.
@@ -2723,11 +3105,728 @@ void   _CBNL_C  cULongMul (                     // Multiplication l1 * l2.
 
   cBigNumberMAddMulShl (pp1, pp2, 0, pp);       // Multiplication.
 
-  p [0] = pp [1];
-  p [1] = pp [2];
+  *p = c [2];
+  return c [1];
+}
+#endif//_umuldCBNL
+
+#endif//_CBIGNUM_ASM
+
+#else //_CBIGNUM_HARDWARE_MUL && _CBNL_MUL
+
+//================================================
+//      Functions of fast hardware multiplication.
+//================================================
+
+#ifndef _CBIGNUM_ASM                            // If not in Cbignumf.cpp
+
+//      Special addition and subtraction with multiplication of
+//      second operand to unsigned long multiplier and left shift
+//      of product to given number of words.
+//
+//      Multiplicand and multiplier are considered to be UNSIGNED
+//      numbers, i.e. sign bits are interpreted as high bits.
+//
+//      For optimization purposes it is assumed that:
+//      - Size of the first number is greater than size of the second
+//        number by value of shift and not smaller than size of result.
+//      - Size of the second number before shift is greater than 0.
+//
+//      Functions do not require for normalization of operands.
+//      Moreover, accumulator MUST be denormalized to number of words
+//      sufficient to keep the result. Number of words in accumulator
+//      does not change after accumulation, so the result can be
+//      NOT normalized.
+
+void   _CBNL_C  cBigNumberMAddMulM  (           // Addition p1+=p2*l2<<k2*BITS.
+                        EXPTR(CBNL) p1,         // Augend, then result.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplicand.
+                     unsigned CBNL  l2,         // Unsigned multiplier.
+                            size_t  k2          // Left shift of product.
+        )                                       // p1, p2 may not overlap.
+{
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+  assert ((size_t)(*p1) > n2 + k2);             // Check of size.
+  assert (n2 > 0);                              // Check of size.
+  assert (p1 != p2);                            // Check if not overlap.
+
+  cBigTemp c; c.checkexpand (n2 + 2);           // Allocate temporary buffer
+  EXPTR(CBNL) p = EXPTRTYPE(c);                 // for multiplication.
+  {
+    size_t k = 1;
+    do                                          // Cycle on odd words of p2.
+      p [k] = _umuldCBNL (p2 [k], l2,
+                         (unsigned CBNL*)EXPTRINDEX(p + k + 1,0));
+    while ((k += 2) <= n2);                     // End of cycle on words of p2.
+    p [k] = 0; p [0] = (CBNL) k;
+    cBigNumberMAddM (p1, p, k2);
+  }
+  if (n2 > 1)
+  {
+    size_t k = 1;
+    do                                          // Cycle on even words of p2.
+      p [k] = _umuldCBNL (p2 [k + 1], l2,
+                         (unsigned CBNL*)EXPTRINDEX(p + k + 1,0));
+    while ((k += 2) < n2);                      // End of cycle on words of p2.
+    p [k] = 0; p [0] = (CBNL) k;
+    cBigNumberMAddM (p1, p, k2 + 1);
+  }
 }
 
-#endif//_CBIGNUM_HARDWARE_MUL
+void   _CBNL_C  cBigNumberMSubMulM  (           // Subtract p1-=p2*l2<<k2*BITS.
+                        EXPTR(CBNL) p1,         // Subtrahend, then result.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplicand.
+                     unsigned CBNL  l2,         // Unsigned multiplier.
+                            size_t  k2          // Left shift of product.
+        )                                       // p1, p2 may not overlap.
+{
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+  assert ((size_t)(*p1) > n2 + k2);             // Check of size.
+  assert (n2 > 0);                              // Check of size.
+  assert (p1 != p2);                            // Check if not overlap.
+
+  cBigTemp c; c.checkexpand (n2 + 2);           // Allocate temporary buffer
+  EXPTR(CBNL) p = EXPTRTYPE(c);                 // for multiplication.
+  {
+    size_t k = 1;
+    do                                          // Cycle on odd words of p2.
+      p [k] = _umuldCBNL (p2 [k], l2,
+                         (unsigned CBNL*)EXPTRINDEX(p + k + 1,0));
+    while ((k += 2) <= n2);                     // End of cycle on words of p2.
+    p [k] = 0; p [0] = (CBNL) k;
+    cBigNumberMSubM (p1, p, k2);
+  }
+  if (n2 > 1)
+  {
+    size_t k = 1;
+    do                                          // Cycle on even words of p2.
+      p [k] = _umuldCBNL (p2 [k + 1], l2,
+                         (unsigned CBNL*)EXPTRINDEX(p + k + 1,0));
+    while ((k += 2) < n2);                      // End of cycle on words of p2.
+    p [k] = 0; p [0] = (CBNL) k;
+    cBigNumberMSubM (p1, p, k2 + 1);
+  }
+}
+
+#endif//_CBIGNUM_ASM
+
+//      Special functions for accumulation of multiplication with shift
+//      thereby hardware multiplication by scholar method, effective if
+//      size of at least one operand is less than _CBNL_KARATSUBA_MIN * 4.
+//      For better performance larger operand should be placed SECOND,
+//      except for case when it size is greater than _CBNL_MUL_HIGH.
+//
+//      Multiplier is considered to be UNSIGNED number,
+//      i.e. sign bits are interpreted as high bits.
+//
+//      Functions do not require for normalization of operands.
+//      Moreover, accumulator MUST be denormalized to number of words
+//      sufficient to keep the result. Number of words in accumulator
+//      does not change after accumulation, so the result can be
+//      NOT normalized.
+
+void   _CBNL_C  cBigNumberMAddMulShlM (         // Addition of multiplication
+                                                // p += p1 * p2 << k*BITS.
+                const   CBPTR(CBNL) p1,         // Multiplicand.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Augend denormalized to
+                                                // *p >= *p1 + *p2 + k + 1 -
+                                                //          (p1 [*p1] == 0));
+        )                                       // p1, p2, p may not overlap.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+  size_t n1 = (size_t)(*CBPTRBASE(p1++));       // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+//      Algorithm with hardware multiplication.
+
+  if (n1 != 0 && n2 != 0)                       // Are operands not empty?
+  {
+    CBNL lp1 = *p1++;                           // First word of p1.
+
+    if (--n1 != 0)
+    do                                          // Cycle on words of p1.
+    {
+      if (lp1 != 0) cBigNumberMAddMulM (p, p2, lp1, k);
+      lp1 = *p1++; k++;                         // Next word of p1.
+    }
+    while (--n1 != 0);                          // End of cycle on words of p1.
+
+    if (lp1 > 0)                                // Check if positive.
+      cBigNumberMAddMulM (p, p2, lp1, k);
+    else if (lp1 < 0)                           // Check if negative.
+      cBigNumberMSubMulM (p, p2, -lp1, k);
+  }
+}
+
+void   _CBNL_C  cBigNumberMSubMulShlM (         // Subtract of multiplication
+                                                // p -= p1 * p2 << k*BITS.
+                const   CBPTR(CBNL) p1,         // Multiplicand.
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Subtrahend denormalized to
+                                                // *p >= *p1 + *p2 + k + 1 -
+                                                //          (p1 [*p1] == 0));
+        )                                       // p1, p2, p may not overlap.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+  size_t n1 = (size_t)(*CBPTRBASE(p1++));       // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+//      Algorithm with hardware multiplication.
+
+  if (n1 != 0 && n2 != 0)                       // Are operands not empty?
+  {
+    CBNL lp1 = *p1++;                           // First word of p1.
+
+    if (--n1 != 0)
+    do                                          // Cycle on words of p1.
+    {
+      if (lp1 != 0) cBigNumberMSubMulM (p, p2, lp1, k);
+      lp1 = *p1++; k++;                         // Next word of p1.
+    }
+    while (--n1 != 0);                          // End of cycle on words of p1.
+
+    if (lp1 > 0)                                // Check if positive.
+      cBigNumberMSubMulM (p, p2, lp1, k);
+    else if (lp1 < 0)                           // Check if negative.
+      cBigNumberMAddMulM (p, p2, -lp1, k);
+  }
+}
+
+//      The same, but denormalization of accumulator is not required
+//      and result is normalized.
+//
+//      NOTE: These functions are also implemented thereby shifts,
+//            there buffer for p1 is overwritten and must be greater than
+//            required for the number - look above for detailed comments.
+
+void    cBigNumberMAddMulShl (                  // Addition of multiplication
+                                                // p += p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand (**).
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Augend in buffer of size
+                                                // max (*p, *p1 + *p2 + k) + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // ** p1 is not overwritten.
+{
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+  cBigNumberFitTo (p, n1 + n2 + k + 1);         // Denormalization.
+  cBigNumberMAddMulShlM (p1, p2, k, p);
+  cBigNumberFit (p);                            // Normalization.
+}
+
+void    cBigNumberMSubMulShl (                  // Subtract of multiplication
+                                                // p -= p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand (**).
+                const   CBPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Subtrahend in buffer of size
+                                                // max (*p, *p1 + *p2 + k) + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // ** p1 is not overwritten.
+{
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+  cBigNumberFitTo (p, n1 + n2 + k + 1);         // Denormalization.
+  cBigNumberMSubMulShlM (p1, p2, k, p);
+  cBigNumberFit (p);                            // Normalization.
+}
+
+//      Special functions for accumulation of multiplication with shift
+//      thereby hardware multiplication by Karatsuba method.
+//      For better performance considerably larger
+//      operand should be placed SECOND.
+//
+//      Multiplier is considered to be UNSIGNED number,
+//      i.e. sign bits are interpreted as high bits.
+//
+//      Functions do not require for normalization of operands.
+//      Moreover, accumulator MUST be denormalized to number of words
+//      sufficient to keep the result. Number of words in accumulator
+//      does not change after accumulation, so the result can be
+//      NOT normalized.
+
+void   _CBNL_C  cBigNumberMAddMulShlKarM (      // Addition of multiplication
+                                                // p += p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand.
+                        EXPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Augend denormalized to
+                                                // *p >= *p1 + *p2 + k + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // Changes only *p1, *p2.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+#ifdef  _CBIGNUM_KARATSUBA_MUL
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+#endif//_CBIGNUM_KARATSUBA_MUL
+  size_t n2 = (size_t)(*p2);                    // Number of words.
+
+//      Check if Karatsuba method is applicable.
+
+#ifdef  _CBIGNUM_KARATSUBA_MUL
+  if (n1 > _CBNL_KARATSUBA_MIN && n2 > _CBNL_KARATSUBA_MIN)
+  {
+
+//      Multiply large 2nd operand by pieces.
+//      NOTE: Algorithm requires binary code of p1 kept intact
+//            in the recursive call. Only *p1 may change.
+
+    while (n2 > n1 * 2 - n1 / 4)                // Check of size.
+    {
+      CBNL lp = p2 [n2 -= n1];                  // Save word to be overwritten.
+      p2 [n2] = (CBNL) n1;                      // Put size of piece.
+      cBigNumberMAddMulShlKarM (p1, p2 + n2, k + n2, p);
+      p2 [n2] = lp;                             // Restore word.
+      p2 [0] = (CBNL) n2;                       // Put size of last piece.
+      p1 [0] = (CBNL) n1;                       // Restore original size of p1.
+    }
+
+//      Multiply operands of similar sizes by Karatsuba.
+//      NOTE: Algorithm requires binary code of p1 and p2 kept intact
+//            in the recursive call. Only *p1 and *p2 may change.
+
+    assert ((size_t)(*p) >= n1 + n2 + k);       // Check of size.
+    size_t n = (n1 > n2? n1 - 1: n2) / 2;       // Size of low part.
+
+//      Size of p1 can not be n or smaller.
+//      Size of p2 may be n or smaller if p2 is twice or more shorter than p1.
+//      NOTE: To prevent overflow of p we must keep high part of p1
+//            larger than low part of p1 for rare special case when
+//            p2 is twice or more shorter than p1.
+
+    cBigTemp c12; c12.checkexpand (n * 2 + 6);  // Allocate temporary buffer.
+    EXPTR(CBNL) p12 = EXPTRTYPE(c12);           // Pointer to temporary buffer.
+
+//      Accumulate high p1 * high p2 and store high p2 + low p2.
+//      NOTE: p1 and p2 remains unchanged, except for *p2.
+
+    assert (n1 > n);
+    if (n2 > n)
+    {
+      CBNL lp1 = p1 [n];                        // Save word to be overwritten.
+      CBNL lp2 = p2 [n];                        // Save word to be overwritten.
+      p1 [n] = (CBNL)(n1 -= n);                 // Put size of piece.
+      p2 [n] = (CBNL)(n2 -= n);                 // Put size of piece.
+      cBigNumberClearTo (p12, n1 + n2 + 2);     // Clearing of multiply buffer.
+      cBigNumberMAddMulShlKarM (p1 + n, p2 + n, 0, p12);
+                                                // Multiply high p1 * high p2.
+      --*EXPTRBASE(p12);                        // Partial normalization.
+      cBigNumberMAddM (p, p12, k + n * 2);      // Accumulate high p1 * p2.
+      cBigNumberMSubM (p, p12, k + n);          // Accumulate high p1 * p2.
+      p1 [n] = lp1;                             // Restore word.
+      p2 [n] = lp2;                             // Restore word.
+
+      cBigNumberCopyShrUToM (p2, n, p12);       // Get high part from p2.
+
+      CBNL lp = p2 [n + 1];                     // Save word to be overwritten.
+      p2 [n + 1] = 0;                           // Add high 0-word to p2.
+      *EXPTRBASE(p2) = (CBNL)(n + 1);           // Get low part of p2.
+      cBigNumberMAddM (p12, p2, 0);             // Add high p2 + low p2.
+      *EXPTRBASE(p2) = (CBNL) n;                // Remove high 0-word from p2.
+      n2 = n;                                   // Size of low part.
+      p2 [n + 1] = lp;                          // Restore word.
+
+      size_t n12 = (size_t)(*EXPTRBASE(p12));   // Number of words.
+      while (p12 [n12] == 0 && --n12 != 0) continue;
+      *EXPTRBASE(p12) = (CBNL) n12;             // Remove high 0-words.
+    }
+    else
+      cBigNumberCopy (p2, p12);                 // Get copy of p2.
+
+//      Accumulate (high p1 + low p1) * (high p2 + low p2) and low p1 * low p2.
+//      NOTE: p1 and p2 remains unchanged, except for *p1 and *p2.
+
+    {
+      cBigNumberCopyShrToM (p1, n, p12 + n + 3);// Get high part from p1.
+      CBNL lp = p1 [n + 1];                     // Save word to be overwritten.
+      p1 [n + 1] = 0;                           // Add high 0-word to p1.
+      *EXPTRBASE(p1) = (CBNL)(n + 1);           // Get low part of p1.
+      cBigNumberMAddM (p12 + n + 3, p1, 0);     // Add high p1 + low p1.
+      cBigNumberFit (p12 + n + 3);              // Normalization.
+
+      cBigNumberMAddMulShlKarM (p12 + n + 3, p12, k + n, p);
+                                                // Accumulate add p1 * add p2.
+
+      cBigNumberClearTo (p12, n + n2 + 3);      // Clearing of multiply buffer.
+      cBigNumberMAddMulShlKarM (p1, p2, 0, p12);// Multiply low p1 * low p2.
+      (*EXPTRBASE(p12)) -= 2;                   // Partial normalization.
+      cBigNumberMSubM (p, p12, k + n);          // Accumulate low p1 * p2.
+      cBigNumberMAddM (p, p12, k);              // Accumulate low p1 * p2.
+
+      p1 [n + 1] = lp;                          // Restore word.
+    }
+
+    return;
+  }
+#endif//_CBIGNUM_KARATSUBA_MUL
+
+//      Multiply 2nd operand by pieces if 1st operand is small.
+//
+//      The high piece may be either positive or negative, but lower
+//      pieces are all positive, so we must add high 0-word to them.
+//      The high and lower pieces contains _CBNL_MUL_OPT + 1 words,
+//      including the high 0-word addendum for lower pieces, except
+//      for the lowest piece that may contains up to _CBNL_MUL_HIGH
+//      word with the high 0-word addendum.
+//
+//      Algorithm extracts pieces in place without copying.
+
+#ifdef  _CBIGNUM_BLOCK_MUL
+  if (n2 > _CBNL_MUL_HIGH)
+  {
+    do                                          // Cycle on pieces.
+    {
+      n2 -= _CBNL_MUL_OPT + 1;                  // Total size of lower pieces.
+      CBNL lp = p2 [n2];                        // Save word to be overwritten.
+      p2 [n2] = _CBNL_MUL_OPT + 1;              // Put size of piece.
+      cBigNumberMAddMulShlM (p1, p2 + n2, k + n2, p);
+      p2 [n2] = lp;                             // Restore word.
+    }
+    while (n2 >= _CBNL_MUL_HIGH);
+    p2 [0] = (CBNL) n2;                         // Put size of lowest piece.
+  }
+#endif//_CBIGNUM_BLOCK_MUL
+
+//      Multiply the lowest piece.
+
+  cBigNumberMAddMulShlM (p1, p2, k, p);
+}
+
+void   _CBNL_C  cBigNumberMSubMulShlKarM (      // Subtract of multiplication
+                                                // p -= p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand.
+                        EXPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Subtrahend denormalized to
+                                                // *p >= *p1 + *p2 + k + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // Changes only *p1, *p2.
+{
+  assert (p1 != p);                             // Check if not overlap.
+  assert (p2 != p);                             // Check if not overlap.
+#ifdef  _CBIGNUM_KARATSUBA_MUL
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+#endif//_CBIGNUM_KARATSUBA_MUL
+  size_t n2 = (size_t)(*p2);                    // Number of words.
+
+//      Check if Karatsuba method is applicable.
+
+#ifdef  _CBIGNUM_KARATSUBA_MUL
+  if (n1 > _CBNL_KARATSUBA_MIN && n2 > _CBNL_KARATSUBA_MIN)
+  {
+
+//      Multiply large 2nd operand by pieces.
+//      NOTE: Algorithm requires binary code of p1 kept intact
+//            in the recursive call. Only *p1 may change.
+
+    while (n2 > n1 * 2 - n1 / 4)                // Check of size.
+    {
+      CBNL lp = p2 [n2 -= n1];                  // Save word to be overwritten.
+      p2 [n2] = (CBNL) n1;                      // Put size of piece.
+      cBigNumberMSubMulShlKarM (p1, p2 + n2, k + n2, p);
+      p2 [n2] = lp;                             // Restore word.
+      p2 [0] = (CBNL) n2;                       // Put size of last piece.
+      p1 [0] = (CBNL) n1;                       // Restore original size of p1.
+    }
+
+//      Multiply operands of similar sizes by Karatsuba.
+//      NOTE: Algorithm requires binary code of p1 and p2 kept intact
+//            in the recursive call. Only *p1 and *p2 may change.
+
+    assert ((size_t)(*p) >= n1 + n2 + k);       // Check of size.
+    size_t n = (n1 > n2? n1 - 1: n2) / 2;       // Size of low part.
+
+//      Size of p1 can not be n or smaller.
+//      Size of p2 may be n or smaller if p2 is twice or more shorter than p1.
+//      NOTE: To prevent overflow of p we must keep high part of p1
+//            larger than low part of p1 for rare special case when
+//            p2 is twice or more shorter than p1.
+
+    cBigTemp c12; c12.checkexpand (n * 2 + 6);  // Allocate temporary buffer.
+    EXPTR(CBNL) p12 = EXPTRTYPE(c12);           // Pointer to temporary buffer.
+
+//      Accumulate high p1 * high p2 and store high p2 + low p2.
+//      NOTE: p1 and p2 remains unchanged, except for *p2.
+
+    assert (n1 > n);
+    if (n2 > n)
+    {
+      CBNL lp1 = p1 [n];                        // Save word to be overwritten.
+      CBNL lp2 = p2 [n];                        // Save word to be overwritten.
+      p1 [n] = (CBNL)(n1 -= n);                 // Put size of piece.
+      p2 [n] = (CBNL)(n2 -= n);                 // Put size of piece.
+      cBigNumberClearTo (p12, n1 + n2 + 2);     // Clearing of multiply buffer.
+      cBigNumberMAddMulShlKarM (p1 + n, p2 + n, 0, p12);
+                                                // Multiply high p1 * high p2.
+      --*EXPTRBASE(p12);                        // Partial normalization.
+      cBigNumberMSubM (p, p12, k + n * 2);      // Accumulate high p1 * p2.
+      cBigNumberMAddM (p, p12, k + n);          // Accumulate high p1 * p2.
+      p1 [n] = lp1;                             // Restore word.
+      p2 [n] = lp2;                             // Restore word.
+
+      cBigNumberCopyShrUToM (p2, n, p12);       // Get high part from p2.
+
+      CBNL lp = p2 [n + 1];                     // Save word to be overwritten.
+      p2 [n + 1] = 0;                           // Add high 0-word to p2.
+      *EXPTRBASE(p2) = (CBNL)(n + 1);           // Get low part of p2.
+      cBigNumberMAddM (p12, p2, 0);             // Add high p2 + low p2.
+      *EXPTRBASE(p2) = (CBNL) n;                // Remove high 0-word from p2.
+      n2 = n;                                   // Size of low part.
+      p2 [n + 1] = lp;                          // Restore word.
+
+      size_t n12 = (size_t)(*EXPTRBASE(p12));   // Number of words.
+      while (p12 [n12] == 0 && --n12 != 0) continue;
+      *EXPTRBASE(p12) = (CBNL) n12;             // Remove high 0-words.
+    }
+    else
+      cBigNumberCopy (p2, p12);                 // Get copy of p2.
+
+//      Accumulate (high p1 + low p1) * (high p2 + low p2) and low p1 * low p2.
+//      NOTE: p1 and p2 remains unchanged, except for *p1 and *p2.
+
+    {
+      cBigNumberCopyShrToM (p1, n, p12 + n + 3);// Get high part from p1.
+      CBNL lp = p1 [n + 1];                     // Save word to be overwritten.
+      p1 [n + 1] = 0;                           // Add high 0-word to p1.
+      *EXPTRBASE(p1) = (CBNL)(n + 1);           // Get low part of p1.
+      cBigNumberMAddM (p12 + n + 3, p1, 0);     // Add high p1 + low p1.
+      cBigNumberFit (p12 + n + 3);              // Normalization.
+
+      cBigNumberMSubMulShlKarM (p12 + n + 3, p12, k + n, p);
+                                                // Accumulate add p1 * add p2.
+
+      cBigNumberClearTo (p12, n + n2 + 3);      // Clearing of multiply buffer.
+      cBigNumberMAddMulShlKarM (p1, p2, 0, p12);// Multiply low p1 * low p2.
+      (*EXPTRBASE(p12)) -= 2;                   // Partial normalization.
+      cBigNumberMAddM (p, p12, k + n);          // Accumulate low p1 * p2.
+      cBigNumberMSubM (p, p12, k);              // Accumulate low p1 * p2.
+
+      p1 [n + 1] = lp;                          // Restore word.
+    }
+
+    return;
+  }
+#endif//_CBIGNUM_KARATSUBA_MUL
+
+//      Multiply 2nd operand by pieces if 1st operand is small.
+//
+//      The high piece may be either positive or negative, but lower
+//      pieces are all positive, so we must add high 0-word to them.
+//      The high and lower pieces contains _CBNL_MUL_OPT + 1 words,
+//      including the high 0-word addendum for lower pieces, except
+//      for the lowest piece that may contains up to _CBNL_MUL_HIGH
+//      word with the high 0-word addendum.
+//
+//      Algorithm extracts pieces in place without copying.
+
+#ifdef  _CBIGNUM_BLOCK_MUL
+  if (n2 > _CBNL_MUL_HIGH)
+  {
+    do                                          // Cycle on pieces.
+    {
+      n2 -= _CBNL_MUL_OPT + 1;                  // Total size of lower pieces.
+      CBNL lp = p2 [n2];                        // Save word to be overwritten.
+      p2 [n2] = _CBNL_MUL_OPT + 1;              // Put size of piece.
+      cBigNumberMSubMulShlM (p1, p2 + n2, k + n2, p);
+      p2 [n2] = lp;                             // Restore word.
+    }
+    while (n2 >= _CBNL_MUL_HIGH);
+    p2 [0] = (CBNL) n2;                         // Put size of lowest piece.
+  }
+#endif//_CBIGNUM_BLOCK_MUL
+
+//      Multiply the lowest piece.
+
+  cBigNumberMSubMulShlM (p1, p2, k, p);
+}
+
+//      The same, but denormalization of accumulator is not required
+//      and result is normalized.
+//
+//      NOTE: These functions are also implemented in thereby
+//            shifts, there larger argument should be placed first,
+//            buffer for p1 is overwritten and must be greater than
+//            required for the number - look above for detailed comments.
+
+void    cBigNumberMAddMulShlKar (               // Addition of multiplication
+                                                // p += p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand (**).
+                        EXPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Augend in buffer of size
+                                                // max (*p, *p1 + *p2 + k + 1)
+                                                //                        + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // ** Changes only *p1, *p2.
+{
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*p2);                    // Number of words.
+
+  cBigNumberFitTo (p, n1 + n2 + k + 2);         // Denormalization.
+  cBigNumberMAddMulShlKarM (p1, p2, k, p);
+  cBigNumberFit (p);                            // Normalization.
+}
+
+void    cBigNumberMSubMulShlKar (               // Subtract of multiplication
+                                                // p -= p1 * p2 << k*BITS.
+                        EXPTR(CBNL) p1,         // Multiplicand (**).
+                        EXPTR(CBNL) p2,         // Unsigned multiplier.
+                        size_t      k,          // Left shift of product.
+                        EXPTR(CBNL) p           // Subtrahend in buffer of size
+                                                // max (*p, *p1 + *p2 + k + 1)
+                                                //                        + 2.
+        )                                       // p1, p2, p may not overlap.
+                                                // Changes only *p1, *p2.
+{
+  size_t n1 = (size_t)(*p1);                    // Number of words.
+  size_t n2 = (size_t)(*p2);                    // Number of words.
+
+  cBigNumberFitTo (p, n1 + n2 + k + 2);         // Denormalization.
+  cBigNumberMSubMulShlKarM (p1, p2, k, p);
+  cBigNumberFit (p);                            // Normalization.
+}
+
+//      Universal functions of multiplication,
+//      implemented by fast hardware multiplication.
+//      Look above for detailed comments.
+//
+//      For better performance considerably larger
+//      operand should be placed first, here named p2.
+
+void    cBigNumberMAddMul (                     // Addition of multiplication
+                                                // p += p1 * p2.
+                const   CBPTR(CBNL) p2,         // Multiplier.
+                const   CBPTR(CBNL) p1,         // Multiplicand.
+                        EXPTR(CBNL) p           // Augend in buffer of size
+                                                // max (*p, *p1 + *p2 + 1) + 2.
+        )                                       // p1, p2, p may overlap.
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+  cBigTemp cBigBuf1;                            // Allocate temporary buffer.
+  cBigTemp cBigBuf2;                            // Allocate temporary buffer.
+  cBigBuf1.checkexpand (n1);                    // Memory allocation.
+  cBigBuf2.checkexpand (n2 + 1);                // Memory allocation.
+  EXPTR(CBNL) pp1 = EXPTRTYPE(cBigBuf1);        // Buffer for multiplicand.
+  EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for multiplier.
+
+  cBigNumberFitTo (p, n1 + n2 + 2);             // Denormalization.
+
+//      Copying and normalizing non-zero multiplicand skipping low 0-words.
+//      If multiplicand is 0 result will contain 0 words.
+
+  size_t k = cBigNumberCopySkipLow0 (p1, pp1);  // Copying of multiplicand.
+
+  if (CBPTRBASE(p2)[n2] >= 0)                   // Not negative multiplier:
+  {
+    cBigNumberCopy (p2, pp2);                   // Copying.
+    cBigNumberMAddMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+  else                                          // Negative multiplier:
+  {
+    cBigNumberNeg (p2, pp2);                    // Sign inversion.
+    *pp2 = (CBNL)n2;                            // Do not increase size.
+    cBigNumberMSubMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+
+  cBigNumberFit (p);                            // Normalization.
+}
+
+void    cBigNumberMSubMul (                     // Subtract of multiplication
+                                                // p -= p1 * p2.
+                const   CBPTR(CBNL) p2,         // Multiplier.
+                const   CBPTR(CBNL) p1,         // Multiplicand.
+                        EXPTR(CBNL) p           // Subtrahend in buffer of size
+                                                // max (*p, *p1 + *p2 + 1) + 2.
+        )                                       // p1, p2, p may overlap.
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+  cBigTemp cBigBuf1;                            // Allocate temporary buffer.
+  cBigTemp cBigBuf2;                            // Allocate temporary buffer.
+  cBigBuf1.checkexpand (n1);                    // Memory allocation.
+  cBigBuf2.checkexpand (n2 + 1);                // Memory allocation.
+  EXPTR(CBNL) pp1 = EXPTRTYPE(cBigBuf1);        // Buffer for multiplicand.
+  EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for multiplier.
+
+  cBigNumberFitTo (p, n1 + n2 + 2);             // Denormalization.
+
+//      Copying and normalizing non-zero multiplicand skipping low 0-words.
+//      If multiplicand is 0 result will contain 0 words.
+
+  size_t k = cBigNumberCopySkipLow0 (p1, pp1);  // Copying of multiplicand.
+
+  if (CBPTRBASE(p2)[n2] >= 0)                   // Not negative multiplier:
+  {
+    cBigNumberCopy (p2, pp2);                   // Copying.
+    cBigNumberMSubMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+  else                                          // Negative multiplier:
+  {
+    cBigNumberNeg (p2, pp2);                    // Sign inversion.
+    *pp2 = (CBNL)n2;                            // Do not increase size.
+    cBigNumberMAddMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+
+  cBigNumberFit (p);                            // Normalization.
+}
+
+void    cBigNumberMul (                         // Multiplication p = p1 * p2.
+                const   CBPTR(CBNL) p2,         // Multiplier.
+                const   CBPTR(CBNL) p1,         // Multiplicand.
+                        EXPTR(CBNL) p           // Buffer of size
+                                                // *p1 + *p2 + 3.
+        )                                       // p1, p2, p may overlap.
+{
+  size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
+
+  cBigTemp cBigBuf1;                            // Allocate temporary buffer.
+  cBigTemp cBigBuf2;                            // Allocate temporary buffer.
+  cBigBuf1.checkexpand (n1);                    // Memory allocation.
+  cBigBuf2.checkexpand (n2 + 1);                // Memory allocation.
+  EXPTR(CBNL) pp1 = EXPTRTYPE(cBigBuf1);        // Buffer for multiplicand.
+  EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for multiplier.
+
+//      Copying and normalizing non-zero multiplicand skipping low 0-words.
+//      If multiplicand is 0 result will contain 0 words.
+
+  size_t k = cBigNumberCopySkipLow0 (p1, pp1);  // Copying of multiplicand.
+
+//      Clearing of result is the only difference between cBigNumberMul()
+//      and cBigNumberMAddMul(). We must clear the result after copying
+//      of numbers because operands may overlap.
+
+  if (CBPTRBASE(p2)[n2] >= 0)                   // Not negative multiplier:
+  {
+    cBigNumberCopy (p2, pp2);                   // Copying.
+    cBigNumberClearTo (p, n1 + n2 + 2);         // Clearing of multiply buffer.
+    cBigNumberMAddMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+  else                                          // Negative multiplier:
+  {
+    cBigNumberNeg (p2, pp2);                    // Sign inversion.
+    *pp2 = (CBNL)n2;                            // Do not increase size.
+    cBigNumberClearTo (p, n1 + n2 + 2);         // Clearing of multiply buffer.
+    cBigNumberMSubMulShlKarM (pp1, pp2, k, p);  // Optimized multiplication.
+  }
+
+  cBigNumberFit (p);                            // Normalization.
+}
+
+#endif//_CBIGNUM_HARDWARE_MUL && _CBNL_MUL
 
 //================================================
 //      Function handling division by 0.
@@ -2756,7 +3855,7 @@ void    cBigNumberDiv0()                        // >0 - Ignore
 //      same as dividend.
 //
 //      Dividend must be normalized.
-//      Function returns normalized quotient and module.
+//      Function returns normalized quotient and module (remainder).
 
 void    cBigNumberMModDivShlTab (               // Division
                                                 // p = p1 / p2 << k2*BITS,
@@ -2782,7 +3881,7 @@ void    cBigNumberMModDivShlTab (               // Division
 
   *p = (CBNL)(n + 1); p += n; p [1] = 0;        // Start filling of p.
 
-//      Build next words.
+//      Build meaning words of quotient while calculating module (remainder).
 
   if (n2 >= cBigNumberSkipLow0 (p2))            // Skip low 0-words.
   {                                             // Check for division by 0.
@@ -2795,17 +3894,17 @@ void    cBigNumberMModDivShlTab (               // Division
     {
       --n;                                      // Word counter in quotient.
       p2 += n2 * BITS;                          // Word shift of divider.
-      unsigned CBNL mask = (unsigned CBNL)      // Initial mask.
-                        (((CBNL)1) << (BITS-1));
+      unsigned CBNL mask = ((unsigned CBNL)1)   // Initial mask.
+                            << (BITS-1);
       *p = 0;                                   // Clearing word of quotient.
       do                                        // Cycle on bits of quotient.
       {
         p2 -= n2;                               // Current shift.
         CBNL diff = (CBNL)(n + k2) - *p1 + *p2; // Difference of sizes.
         if (diff <= 0 && (diff < 0 ||           // If remainder not less
-            cBigNumberCompHigh (p1, p2) != lt)) // then shifted divider,
-        {                                       // then
-          cBigNumberMSubD (p1, p2, n + k2);     // subtract divider and
+            cBigNumberCompHigh (p1, p2) != lt)) // than shifted divider,
+        {                                       // then subtract
+          cBigNumberMSubD (p1, p2, n + k2);     // shifted divider and
           (*p) += mask;                         // set bit of quotient.
         }
       }
@@ -2821,8 +3920,8 @@ void    cBigNumberMModDivShlTab (               // Division
   else                                          // Divider is 0.
   {                                             // If division by 0
     cBigNumberDiv0();                           // is enabled then module
-    do { *p-- = 0; } while (--n);               // is same as dividend.
-  }
+    do { *p-- = 0; } while (--n);               // is same as dividend
+  }                                             // and quotinent is 0.
 
   cBigNumberFit (p);                            // Normalization of quotient.
   assert (p [(size_t)(*p)] >= 0);               // Check if non-negative.
@@ -2850,71 +3949,83 @@ void    cBigNumberMModDiv (                     // Division p = p1 / p2,
                         EXPTR(CBNL) p           // Buffer of size *p1 + 3.
         )                                       // p2 may overlap with p1, p.
 {
+  assert (cBigNumberIsFit (p1));                // Check of normalization.
   assert (p1 != p);                             // Check if not overlap.
   size_t n1 = (size_t)(*p1);                    // Number of words.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
 
-  cBigTemp cBigBuf2;                            // Allocate temporary buffer.
+//      Get low and high words of short divider, that is of
+//      length greater 0 and not greater_CBIGNUM_SMALL_DIV.
+
+#ifdef  _CBIGNUM_SMALL_DIV
+  unsigned CBNL p2h = 0, p2l = 0;               // Words of divider or 0.
+  if (n2 - 1 <= _CBIGNUM_SMALL_DIV - 1) { p2l = p2 [1];
+                                          p2h = p2 [n2]; }
+
+//      Select either generic algorithms for multiple-word divider
+//      or optimized algorithms for non-zero divider containing
+//      no more than _CBIGNUM_SMALL_DIV words.
+
+  if ((p2h | p2l) == 0)                         // Generic algorithms for
+  {                                             // multiple-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+    cBigTemp cBigBuf2;                          // Allocate temporary buffer.
 #ifdef  _CBIGNUM_SHIFTTAB_DIV
-  CBNL nt = (CBNL)((n2 - n1 + _CBNL_TAB_MIN - 1) & (n2 - _CBNL_TAB_MAX));
-  cBigBuf2.checkexpand ((size_t)((nt < 0)? ((n2 + 3) * BITS + 1): (n2 + 3)));
+    CBNL nt = (CBNL)((n2 - n1 + _CBNL_TAB_MIN - 1) & (n2 - _CBNL_TAB_MAX));
+    cBigBuf2.checkexpand ((size_t)((nt < 0)? ((n2 + 3) * BITS + 1): (n2 + 3)));
 #else //_CBIGNUM_SHIFTTAB_DIV
-  cBigBuf2.checkexpand ((size_t)(n2 + 3));
+    cBigBuf2.checkexpand ((size_t)(n2 + 3));
 #endif//_CBIGNUM_SHIFTTAB_DIV
-  EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for divider.
+    EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);      // Buffer for divider.
 
 //      Copying and normalizing non-zero divider skipping low 0-words.
 //      If divider is 0 result will contain 0 words.
 
-  size_t k2 = cBigNumberCopySkipLow0 (p2, pp2); // Copying of divider.
+    size_t k2 = cBigNumberCopySkipLow0 (p2, pp2);
 
-//      Providing for same signs in dividend and divider.
+//      Providing for the same signs in dividend and divider.
 
-  CBNL signquot = p1 [n1] ^ CBPTRBASE(p2)[n2];  // Sign of quotient.
-  if (signquot < 0) cBigNumberNeg (pp2, pp2);   // Sign inversion of divider.
+    CBNL signquot = p1 [n1] ^ CBPTRBASE(p2)[n2];// Sign of quotient.
+    if (signquot < 0) cBigNumberNeg (pp2, pp2); // Sign inversion of divider.
 
-//      Algorithm with table of shifts.
+//      Generic algorithm with table of shifts.
 
 #ifdef  _CBIGNUM_SHIFTTAB_DIV
-  if (nt < 0)
-  {
-    cBigNumberTab (pp2);                        // Prepare table of shifts.
-    cBigNumberMModDivShlTab (p1, pp2, k2, p);   // Division.
-    if (signquot < 0) cBigNumberNeg (p, p);     // Sign inversion of quotient.
-    return;
-  }
+    if (nt < 0)
+    {
+      cBigNumberTab (pp2);                      // Prepare table of shifts.
+      cBigNumberMModDivShlTab (p1, pp2, k2, p); // Division.
+      if (signquot < 0) cBigNumberNeg (p, p);   // Sign inversion of quotient.
+      return;
+    }
 #endif//_CBIGNUM_SHIFTTAB_DIV
 
-//      Algorithms that do not require for table of shifts.
+//      Generic algorithm that do not require for table of shifts.
 
-  n2 = (size_t)(*pp2);                          // Number of words.
-  if (n2 == 0)                                  // Check for division by 0.
-  {                                             // If division by 0
-    cBigNumberDiv0();                           // is enabled then module
-    p [0] = 1; p [1] = 0;                       // is same as dividend
-    return;                                     // and quotient is 0.
-  }
-  assert (cBigNumberIsFit (p1));                // Check of normalization.
-  assert (cBigNumberIsFit (pp2));               // Check of normalization.
-
-  size_t n = n2 + k2;                           // Number of words after shift.
-
-  if (n2 > 1 || n != n1)                        // Generic division.
-  {
-    if (n > n1)                                 // If dividend is shorter
-    {                                           // the divider then module
+    n2 = (size_t)(*pp2);                        // Number of words.
+    if (n2 == 0)                                // Check for division by 0.
+    {                                           // If division by 0
+      cBigNumberDiv0();                         // is enabled then module
       p [0] = 1; p [1] = 0;                     // is same as dividend
       return;                                   // and quotient is 0.
     }
-    n = n1 - n + 1;                             // Word counter in quotient.
+    assert (cBigNumberIsFit (pp2));             // Check of normalization.
+
+    size_t n = n2 + k2;                         // Number of words after shift.
+    if (n1 < n)                                 // If divider is longer,
+    {                                           // module is same as dividend
+      p [0] = 1; p [1] = 0;                     // and quotient is 0.
+      return;
+    }
 
 //      We must add 0-word to quotient for case when the high bit
 //      of quotient is set to 1. If 0-word is redundant it will be
 //      deleted on normalization.
 
+    n = n1 - n + 1;                             // Word counter in quotient.
     *p = (CBNL)(n + 1); p += n; p [1] = 0;      // Start filling of p.
 
-//      Build next words.
+//      Build meaning words of quotient while calculating module (remainder).
 
     assert ((p1 [n1] ^ pp2 [n2]) >= 0);         // Check if signs are the same.
     CBNL lt = (pp2 [n2] < 0) * 2 - 1;           // Constant to compare
@@ -2932,9 +4043,9 @@ void    cBigNumberMModDiv (                     // Division p = p1 / p2,
         CBNL diff = (CBNL)cBigNumberMDiv2D (pp2)// Bit shift of divider.
                   + (CBNL)(n + k2) - *p1;       // Difference of sizes.
         if (diff <= 0 && (diff < 0 ||           // If remainder not less
-            cBigNumberCompHigh (p1, pp2) != lt))// then shifted divider,
-        {                                       // then
-          cBigNumberMSubD (p1, pp2, n + k2);    // subtract divider and
+            cBigNumberCompHigh (p1, pp2) != lt))// than shifted divider,
+        {                                       // then subtract
+          cBigNumberMSubD (p1, pp2, n + k2);    // shifted divider and
           (*p) += mask;                         // set bit of quotient.
         }
       }
@@ -2942,104 +4053,385 @@ void    cBigNumberMModDiv (                     // Division p = p1 / p2,
       --p;                                      // Word of quotient is ready.
     }
     while (n);                                  // End of cycle on words.
+
     assert ((p1 [(size_t)(*p1)] ^ lt) < 0 ||    // Check if signs are the same
             (p1 [(size_t)(*p1)] + *p1) == 1);   // or remainder is 0.
   //assert (cBigNumberComp (p1, pp2) == lt);    // Check if remainder<divider.
     assert (cBigNumberIsFit (p1));              // Check of normalization.
+
     cBigNumberFit (p);                          // Normalization of quotient.
+    assert (p [(size_t)(*p)] >= 0);             // Check if non-negative.
+    if (signquot < 0) cBigNumberNeg (p, p);     // Sign inversion of quotient.
+#ifdef  _CBIGNUM_SMALL_DIV
+    return;
   }
-  else                                          // Single-word division.
+
+//      Optimized algorithms for single-word or double-word non-zero divider.
+
+  unsigned CBNL p1h = p1 [n1];                  // High word of dividend.
+  CBNL signquot = p1h ^ p2h;                    // Sign of quotient.
+
+//      Algorithms for dividend that is not longer than divider
+//      Is this case we have either single-word quotient
+//      or double-word quotient with 0 or ~0 high word.
+
+  if (n1 <= n2)                                 // Not longer dividend.
   {
-    CBNL p1n = p1 [n1];                         // Word of dividend.
-    CBNL p2n = pp2 [n2];                        // Word of divider.
-    assert ((p1n ^ p2n) >= 0);                  // Check if signs are the same.
-    assert (p2n != 0);                          // Check if not 0.
+    unsigned CBNL pn = 0;                       // Single-word quotient.
 
-#ifndef _CBIGNUM_HARDWARE_DIV
-    CBNL pn = 0;                                // Clearing word of quotient.
-    int nb = cLongBits (p1n) - cLongBits (p2n); // Difference in number of
-    if (nb >= 0)                                // meaning bits must be >= 0.
+//      If dividend is shorter than divider, we do not need to divide,
+//      except for case when divider is denormalized.
+
+CompareSize:
+    if (n1 == n2)                               // Compare size.
+
+//      Select algorithm for either double-word or single-word division.
+
+#if _CBIGNUM_SMALL_DIV > 1
+    switch (n1)
+#endif//_CBIGNUM_SMALL_DIV
     {
-      unsigned CBNL mask = ((unsigned CBNL)1)   // Initial mask.
-                            << nb;              // Align
-      p2n <<= nb;                               // divider to dividend.
+#if _CBIGNUM_SMALL_DIV > 1
+    case 2:                                     // Double-word dividend,
+    {                                           // double-word divider.
+      assert (n1 == 2 && n2 == 2);
 
-      if (p2n > 0)                              // Positive dividend.
-      {
-        for (;; p2n >>= 1)                      // Cycle on remaining bits
-        {                                       // of quotient.
-#ifdef  _CBIGNUM_REDUCE_JUMPS
-          CBNL m = ((p1n < p2n) - 1);           // If remainder not less
-          p1n -= p2n & m;                       // subtract divider and
-          pn += mask & m;                       // set bit of quotient.
-#else //_CBIGNUM_REDUCE_JUMPS
-          if (p1n >= p2n)                       // If remainder not less
-          {                                     // then shifted divider,
-            p1n -= p2n;                         // subtract divider and
-            pn += mask;                         // set bit of quotient.
-          }
-#endif//_CBIGNUM_REDUCE_JUMPS
-          if ((mask >>= 1) == 0) break;
-        }                                       // End of cycle on bits.
-      }
-      else                                      // Negative dividend.
-      {
-        for (;; p2n >>= 1)                      // Cycle on remaining bits
-        {                                       // of quotient.
-#ifdef  _CBIGNUM_REDUCE_JUMPS
-          CBNL m = ((p1n > p2n) - 1);           // If remainder not less
-          p1n -= p2n & m;                       // subtract divider and
-          pn += mask & m;                       // set bit of quotient.
-#else //_CBIGNUM_REDUCE_JUMPS
-          if (p1n <= p2n)                       // If remainder not less
-          {                                     // then shifted divider,
-            p1n -= p2n;                         // subtract divider and
-            pn += mask;                         // set bit of quotient.
-          }
-#endif//_CBIGNUM_REDUCE_JUMPS
-          if ((mask >>= 1) == 0) break;
-        }                                       // End of cycle on bits.
-        if (p1n == 0)                           // Correction for case
-        {                                       // when negative dividend
-          for (size_t n = n1; --n > 0;)         // have non-zero low words.
-          {
-            if (p1 [n] != 0) { pn--; p1n += p2n; break; }
-          }
+      if ((CBNL)p2h == ((CBNL)p2l >> (BITS-1))) // If divider not normalized,
+        goto LongerDividend;                    // select longer dividend.
+
+      unsigned CBNL p1l = p1 [1];               // Low word of dividend.
+
+//      Providing for the same signs in dividend and divider.
+
+      if ((CBNL)p1h < 0) {
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0); // Absolute value of dividend.
+        if ((CBNL)p1h < 0) goto LongerDividend; // Dividend -CBNL_MIN,0 is
+      }                                         // longer, here need normalized
+      assert ((CBNL)p1h >= 0);                  // non-negative dividend.
+
+      if ((CBNL)p2h < 0)
+        p2h = ~p2h + ((p2l = -(CBNL)p2l) == 0); // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && (p2h | p2l) > 0);
+
+//      Get difference in number of meaning bits.
+//      Difference is not greater BITS-1 because p1h has high bit 0.
+
+      unsigned CBNL mask = (unsigned CBNL)1;    // Initial mask.
+      CBNC nb = (int)_ulzcntCBNL (p2h) - (int)_ulzcntCBNL (p1h);
+      if (nb >= 0)                              // Dividend is not shorter
+      {                                         // than divider.
+        assert ((unsigned CBNC)nb < BITS);      // Check for limits of shift.
+        p2h = _ushldCBNL (p2l, p2h, nb);        // Align divider to dividend.
+        p2l = _ushlCBNL (p2l, nb);
+        mask = _ushlCBNL (mask, nb);
+        do                                      // Cycle on bits of quotient.
+        {                                       // If remainder not less,
+          unsigned CBNL pnh, pnl;               // subtract divider and
+          _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+          if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
+          pn += ((CBNL)pnh >= 0)? mask: 0;      // set bit of quotient.
         }
+        while ((p2l = _ushrd1CBNL (p2l, p2h),
+                p2h >>= 1, mask >>= 1) != 0);   // End of cycle on bits.
       }
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [2] < 0)                           // Sign inversion of remainder.
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0);
+      p1 [0] = 1 + ((CBNL)p1h != ((CBNL)p1l >> (BITS-1)));
+      p1 [1] = p1l; p1 [2] = p1h;               // Store remainder and size.
+      assert (cBigNumberIsFit (p1));            // Check of normalization.
+      break; /* switch */
     }
+
+//      Single-word division can be hardware, if enabled.
+
+    default: /* n1 == 1 */                      // Single-word dividend
+                                                // single-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+      assert (n1 == 1 && n2 == 1);
+
+//      Providing for the same signs in dividend and divider.
+
+      if ((CBNL)p1h < 0) p1h = -(CBNL)p1h;      // Absolute value of dividend.
+      assert (p1h <= (unsigned CBNL)(CBNL_MIN));
+
+      if ((CBNL)p2h < 0) p2h = -(CBNL)p2h;      // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && p2h != 0);
+
+#ifdef  _CBIGNUM_HARDWARE_DIV
+#ifdef  _CBIGNUM_REVERSE_MOD
+      pn = p1h / p2h; p1h -= pn * p2h;          // Get quotient and remainder.
+#else //_CBIGNUM_REVERSE_MOD
+      pn = p1h / p2h; p1h %= p2h;               // Get quotient and remainder.
+#endif//_CBIGNUM_REVERSE_MOD
 #else //_CBIGNUM_HARDWARE_DIV
-    CBNL pn;
-    if (p1n != CBNL_MIN || p2n != -1)            // Fix CPU crash.
-    {
-      pn = p1n / p2n;                            // Quotient.
-      p1n -= pn * p2n;                           // Remainder.
-    }
-    else                                         // CBNL_MIN/-1.
-    {
-      pn = p1n;                                  // -Quotient.
-      p1n = 0;                                   // Remainder.
-    }
-    if (p2n < 0 && p1n == 0)                     // Correction for case
-    {                                            // when negative dividend
-      for (size_t n = n1; --n > 0;)              // have non-zero low words.
-      {
-        if (p1 [n] != 0) { pn--; p1n += p2n; break; }
+
+//      Get difference in number of meaning bits.
+//      Difference is not greater BITS-1 because p2h cannot be 0.
+
+      unsigned CBNL mask = (unsigned CBNL)1;    // Initial mask.
+      CBNC nb = (int)_ulzcntCBNL (p2h) - (int)_ulzcntCBNL (p1h);
+      if (nb >= 0)                              // Dividend is not shorter
+      {                                         // than divider.
+        assert ((unsigned CBNC)nb < BITS);      // Check for limits of shift.
+        p2h <<= nb; mask <<= nb;                // Align divider to dividend.
+        do                                      // Cycle on bits of quotient.
+        {
+          CBNL pnh = p1h - p2h;                 // If remainder not less,
+          if (pnh >= 0) p1h = pnh;              // subtract divider and
+          pn += (pnh >= 0)? mask: 0;            // set bit of quotient.
+        }
+        while ((p2h >>= 1, mask >>= 1) != 0);   // End of cycle on bits.
       }
-    }
 #endif//_CBIGNUM_HARDWARE_DIV
 
-    p [0] = 1; p [1] = pn;                      // Store quotient.
-    if (pn < 0) { p [0] = 2; p [2] = 0; }       // Correction for CBNL_MIN/-1.
-    p1 [n1] = p1n;                              // Store remainder.
-    cBigNumberFit (p1);                         // Normalization.
-    assert ((p1 [(size_t)(*p1)] ^ pp2 [n2]) >= 0// Check if signs are the same
-         || (p1 [(size_t)(*p1)] + *p1) == 1);   // or remainder is 0.
+      assert (p1h <= (unsigned CBNL)(CBNL_MIN));
+      if (p1 [1] >= 0) p1 [1] = p1h;            // Store remainder.
+      else             p1 [1] = -(CBNL)p1h;     // Sign inversion of remainder.
+    }
+    else if ((CBNL)p2h == ((CBNL)p2l >> (BITS-1)) ||
+             p2h == 0 && p2l == (((unsigned CBNL)1) << (BITS-1)))
+    {                                           // If longer divider have
+      p2h = p2l; --n2; goto CompareSize;        // redundant high word delete
+    }                                           // it and compare size again.
+
+    if (signquot >= 0)                          // Store quotient and size.
+    if ((CBNL)pn >= 0)
+         { p [0] = 1; p [1] = pn; }             // Positive one-word quotient.
+    else { p [0] = 2; p [1] = pn; p [2] = 0; }  // Add sign word.
+    else                                        // Sign inversion of quotient.
+    if (-(CBNL)pn <= 0)
+         { p [0] = 1; p [1] = -(CBNL)pn; }      // Negative one-word quotient.
+    else { p [0] = 2; p [1] = -(CBNL)pn; p [2] = ~(CBNL)0; }
     assert (cBigNumberIsFit (p));               // Check of normalization.
   }
 
-  assert (p [(size_t)(*p)] >= 0);               // Check if non-negative.
-  if (signquot < 0) cBigNumberNeg (p, p);       // Sign inversion of quotient.
+//      Algorithms for multiple-word dividend that is longer than divider.
+//      These algorithms has two parts. The first one reduces remainder
+//      to size of divider and the second one do equal-size division.
+
+  else /* n1 > n2 */                            // Longer dividend.
+  {
+#if _CBIGNUM_SMALL_DIV > 1
+LongerDividend:
+#endif//_CBIGNUM_SMALL_DIV
+    if ((CBNL)p1h < 0) {                        // If negative dividend
+      p1 [0] = p1h;                             // save sign of dividend and
+      size_t n = 0;                             // convert to absolute value.
+      do ++n; while ((p1 [n] = p1h = -p1 [n]) == 0); ++n;
+      if (n <= n1) do p1 [n] = p1h = ~p1 [n]; while (++n <= n1);
+      else if ((CBNL)p1h < 0) { p1h = 0; ++n1; }// Add zero word for -CBNL_MIN
+    }                                           // thus obtaining normalized
+    assert ((CBNL)p1h >= 0);                    // non-negative dividend.
+
+//      Left shift of dividend to get maximal value with high bit 0.
+
+    CBNC nb1 = (int)_ulzcntCBNL (p1h) - 1;      // Left shift of dividend.
+    assert ((unsigned CBNC)nb1 < BITS);         // Check for limits if shift.
+
+//      Select algorithm for either double-word or single-word divider.
+
+#if _CBIGNUM_SMALL_DIV > 1
+    switch (n2)
+#endif//_CBIGNUM_SMALL_DIV
+    {
+#if _CBIGNUM_SMALL_DIV > 1
+    case 2:                                     // Multiple-word dividend,
+    if ((CBNL)p2h != ((CBNL)p2l >> (BITS-1)))   // double-word divider
+    {                                           // that must be normalized.
+      assert (n1 > 2);
+
+      if ((CBNL)p2h < 0)
+        p2h = ~p2h + ((p2l = -(CBNL)p2l) == 0); // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && (p2h | p2l) > 0);
+
+//      Shift divider left to get maximal value with high bit 0,
+//      except for special divider -CBNL_MIN,0 that remains unshifted.
+
+      CBNC nb2 = (int)_ulzcntCBNL (p2h) - 1;    // Left shift of divider.
+      if (nb2 < 0) nb2 = 0;                     // Case -CBNL_MIN,0.
+      assert ((unsigned CBNC)nb2 < BITS);       // Check for limits of shift.
+      p2h = _ushldCBNL (p2l, p2h, nb2);         // Shift high word of divider.
+      p2l = _ushlCBNL (p2l, nb2);               // Shift low word of divider.
+      assert (p2h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      We must add 0-word to quotient for case when the high bit
+//      of quotient is set to 1. If 0-word is redundant it will be
+//      deleted on normalization.
+
+      *p = (CBNL)n1; p += n1;                   // Length n1 - n2 + 2.
+      *p-- = 0;                                 // Start filling of p.
+
+      CBNC nb = nb2 - nb1;                      // Difference between shifts.
+      if (nb < 0) {                             // If word of dividend shorter
+        *p-- = 0; nb += BITS;                   // clear word of quotient.
+      }                                         // Set initial mask.
+      unsigned CBNL mask = ((unsigned CBNL)1) << nb;
+      assert ((unsigned CBNC)nb < BITS);        // Check for limits of shift.
+
+//      Shift dividend left to get maximal value with high bit 0.
+
+      unsigned CBNL p1l = p1 [--n1];            // Lower word of dividend.
+      unsigned CBNL p1n = 0;                    // Next word of dividend.
+      if (nb1 > 0)                              // Left shift dividend to have
+      {                                         // only one high zero bit.
+        p1n = p1 [--n1];                        // Load next word of dividend.
+        p1h = _ushldCBNL (p1l, p1h, nb1);       // Shift high word of dividend.
+        p1l = _ushldCBNL (p1n, p1l, nb1);       // Shift lower word of dividend.
+        p1n = _ushlCBNL (p1n, nb1);             // Shift next word of dividend.
+        nb1 -= BITS;
+      }
+      assert (p1h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Build meaning words of quotient while calculating module (remainder).
+
+      unsigned CBNL pn = 0;                     // Word of quotient.
+      for (;;)                                  // Cycle on bits of quotient.
+      {                                         // If remainder not less,
+        unsigned CBNL pnh, pnl;                 // subtract divider and
+        _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+        if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
+        pn += ((CBNL)pnh >= 0)? mask: 0;        // set bit of quotient.
+        if (++nb1 > 0)                          // No more bits in the word.
+        {
+          if (--n1 == 0) break;                 // No more words in dividend.
+          p1n = p1 [n1]; nb1 -= BITS;           // Next word of dividend.
+        }
+        p1h = _ushld1CBNL (p1l, p1h);           // Left shift of remainder.
+        p1l = _ushld1CBNL (p1n, p1l);
+        p1n += p1n;
+        if (!(mask >>= 1))                      // Left shift of mask.
+        {                                       // Word of quotient is ready.
+          *p-- = pn; pn = 0;                    // Store word of quotient.
+          mask = ((unsigned CBNL)1) << (BITS-1);// Reset mask.
+        }
+      }                                         // End of cycle on bits.
+
+//      Double-word division for the last two words of remainder.
+
+      while ((p2l = _ushrd1CBNL (p2l, p2h),
+              p2h >>= 1, mask >>= 1) != 0)      // Cycle on bits of quotient.
+      {                                         // If remainder not less,
+        unsigned CBNL pnh, pnl;                 // subtract divider and
+        _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+        if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
+        pn += ((CBNL)pnh >= 0)? mask: 0;        // set bit of quotient.
+      }                                         // End on cycle on bits.
+      *p-- = pn;                                // Store last word of quotient.
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [0] < 0) {                         // Sign inversion of remainder.
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0);
+      }
+      p1 [0] = 1 + ((CBNL)p1h != ((CBNL)p1l >> (BITS-1)));
+      p1 [1] = p1l; p1[2] = p1h;                // Store remainder and size.
+      assert (cBigNumberIsFit (p1));            // Check of normalization.
+      break; /* switch */
+    }                                           // Delete high word of divider
+    p2h = p2l;                                  // if not normalized.
+
+//      Algorithm for single-word dividend can use hardware division if enabled.
+
+    default: /* n2 == 1 */                      // Multiple-word dividend,
+                                                // single-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+      assert (n1 > 1);
+
+      if ((CBNL)p2h < 0) p2h = -(CBNL)p2h;      // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && p2h > 0);
+
+//      Shift divider left to get maximal value with high bit 0,
+//      except for special divider -CBNL_MIN that remains unshifted.
+
+      CBNC nb2 = (int)_ulzcntCBNL (p2h) - 1;    // Left shift of divider.
+      if (nb2 < 0) nb2 = 0;                     // Case -CBNL_MIN.
+      assert ((unsigned CBNC)nb2 < BITS);       // Check for limits of shift.
+      p2h <<= nb2;                              // Shift divider.
+      assert (p2h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      We must add 0-word to quotient for case when the high bit
+//      of quotient is set to 1. If 0-word is redundant it will be
+//      deleted on normalization.
+
+      *p = (CBNL)(n1 + 1); p += (n1 + 1);       // Length n1 - n2 + 2.
+      *p-- = 0;                                 // Start filling of p.
+
+      CBNC nb = nb2 - nb1;                      // Difference between shifts.
+      if (nb < 0) {                             // If word of dividend shorter
+        *p-- = 0; nb += BITS;                   // clear word of quotient.
+      }                                         // Initial mask.
+      unsigned CBNL mask = ((unsigned CBNL)1) << nb;
+      assert ((unsigned CBNC)nb < BITS);        // Check for limits of shift.
+
+//      Shift dividend left to get maximal value with high bit 0.
+
+      unsigned CBNL p1l = 0;                    // Next word of dividend.
+      if (nb1 > 0)                              // Left shift dividend to have
+      {                                         // only one high zero bit.
+        p1l = p1 [--n1];                        // Load next word of dividend.
+        p1h = _ushldCBNL (p1l, p1h, nb1);       // Shift high word of dividend.
+        p1l = _ushlCBNL (p1l, nb1);             // Shift next word of dividend.
+        nb1 -= BITS;
+      }
+      assert (p1h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Build meaning words of quotient while calculating module (remainder).
+
+      unsigned CBNL pn = 0;                     // Word of quotient.
+      for (;;)                                  // Cycle on bits of quotient.
+      {
+        CBNL pnh = p1h - p2h;                   // If remainder not less,
+        if (pnh >= 0) p1h = pnh;                // subtract divider and
+        pn += (pnh >= 0)? mask: 0;              // set bit of quotient.
+        if (++nb1 > 0)                          // No more bits in the word.
+        {
+          if (--n1 == 0) break;                 // No more words in dividend.
+          p1l = p1 [n1]; nb1 -= BITS;           // Next word of dividend.
+        }
+        p1h = _ushld1CBNL (p1l, p1h);           // Left shift of remainder.
+        p1l += p1l;
+        if (!(mask >>= 1))                      // Left shift of mask.
+        {                                       // Word of quotient is ready.
+          *p-- = pn; pn = 0;                    // Store word of quotient.
+          mask = ((unsigned CBNL)1) << (BITS-1);// Reset mask.
+        }
+      }                                         // End of cycle on bits.
+
+//      Single-word division for the last word of remainder.
+
+#ifdef  _CBIGNUM_HARDWARE_DIV
+      if (nb2 >= _CBNL_HARDDIV_BITS)            // Use hardware division if
+      {                                         // there are some high 0-bits.
+        p2h >>= nb2;                            // Restore unshifted divider.
+#ifdef  _CBIGNUM_REVERSE_MOD
+        unsigned CBNL pl = p1h / p2h;           // Divide.
+        pn |= pl; p1h -= pl * p2h;              // Get quotient and remainder.
+#else //_CBIGNUM_REVERSE_MOD
+        pn |= p1h / p2h; p1h %= p2h;            // Get quotient and remainder.
+#endif//_CBIGNUM_REVERSE_MOD
+      }
+      else                                      // Use binary division.
+#endif//_CBIGNUM_HARDWARE_DIV
+      while ((p2h >>= 1, mask >>= 1) != 0)      // Cycle on bits of quotient.
+      {
+        CBNL pnh = p1h - p2h;                   // If remainder not less,
+        if (pnh >= 0) p1h = pnh;                // subtract divider and
+        pn += (pnh >= 0)? mask: 0;              // set bit of quotient.
+      }                                         // End of cycle on bits.
+      *p-- = pn;                                // Store last word of quotient.
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [0] >= 0) p1 [1] = p1h;            // Store remainder.
+      else             p1 [1] = -(CBNL)p1h;     // Sign inversion of remainder.
+      p1 [0] = 1;                               // Size of remainder.
+    }
+
+    cBigNumberFit (p);                          // Normalization of quotient.
+    assert (p [(size_t)(*p)] >= 0);             // Check if non-negative.
+    if (signquot < 0) cBigNumberNeg (p, p);     // Sign inversion of quotient.
+  }
+#endif//_CBIGNUM_SMALL_DIV
 }
 
 //================================================
@@ -3072,7 +4464,7 @@ void    cBigNumberMModShlTab (                  // Module p1 %= p2 << k2*BITS.
   size_t n1 = (size_t)(*p1);                    // Number of words.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
   size_t n = n2 + k2;                           // Number of words after shift.
-  if (n > n1) n = n1; n = n1 - n + 1;           // Word counter in quotient.
+  if (n > n1) n = n1; n = n1 - n + 1;           // Word counter.
 
   if (n2 >= cBigNumberSkipLow0 (p2))            // Skip low 0-words.
   {                                             // Check for division by 0.
@@ -3081,20 +4473,20 @@ void    cBigNumberMModShlTab (                  // Module p1 %= p2 << k2*BITS.
                                                 // absolute values of numbers.
                                                 // (p1 and p2 >= 0)? -1: 1
     n2 += 2;                                    // Step of table of shifts.
-    do                                          // Cycle on words of quotient.
+    do                                          // Cycle on words.
     {
-      --n;                                      // Word counter in quotient.
+      --n;                                      // Word counter.
       p2 += n2 * BITS;                          // Word shift of divider.
-      unsigned CBNL mask = (unsigned CBNL)      // Initial mask.
-                        (((CBNL)1) << (BITS-1));
-      do                                        // Cycle on bits of quotient.
+      unsigned CBNL mask = ((unsigned CBNL)1)   // Initial mask.
+                            << (BITS-1);
+      do                                        // Cycle on bits.
       {
         p2 -= n2;                               // Current shift.
         CBNL diff = (CBNL)(n + k2) - *p1 + *p2; // Difference of sizes.
         if (diff <= 0 && (diff < 0 ||           // If remainder not less
-            cBigNumberCompHigh (p1, p2) != lt)) // then shifted divider,
-        {                                       // then
-          cBigNumberMSubD (p1, p2, n + k2);     // subtract divider.
+            cBigNumberCompHigh (p1, p2) != lt)) // than shifted divider,
+        {                                       // then subtract
+          cBigNumberMSubD (p1, p2, n + k2);     // shifted divider.
         }
       }
       while ((mask >>= 1) != 0);                // End of cycle on bits.
@@ -3108,7 +4500,7 @@ void    cBigNumberMModShlTab (                  // Module p1 %= p2 << k2*BITS.
   else                                          // Divider is 0.
   {                                             // If division by 0
     cBigNumberDiv0();                           // is enabled then module
-  }
+  }                                             // is same as dividend.
 }
 
 //      Universal function of module works for numbers
@@ -3131,163 +4523,457 @@ void    cBigNumberMMod (                        // Module p1 %= p2.
                 const   CBPTR(CBNL) p2          // Divider.
         )                                       // p1, p2 may overlap.
 {
+  assert (cBigNumberIsFit (p1));                // Check of normalization.
   size_t n1 = (size_t)(*p1);                    // Number of words.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
 
-  cBigTemp cBigBuf2;                            // Allocate temporary buffer.
+//      Get low and high words of short divider.
+
+#ifdef  _CBIGNUM_SMALL_DIV
+  unsigned CBNL p2h = 0, p2l = 0;               // Words of divider or 0.
+  if (n2 - 1 <= _CBIGNUM_SMALL_DIV - 1) { p2l = p2 [1];
+                                          p2h = p2 [n2]; }
+
+//      Select either generic algorithms for multiple-word divider
+//      or optimized algorithms for non-zero divider containing
+//      no more than _CBIGNUM_SMALL_DIV words.
+
+  if ((p2h | p2l) == 0)                         // Generic algorithms for
+  {                                             // multiple-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+    cBigTemp cBigBuf2;                          // Allocate temporary buffer.
 #ifdef  _CBIGNUM_SHIFTTAB_DIV
-  CBNL nt = (CBNL)((n2 - n1 + _CBNL_TAB_MIN - 1) & (n2 - _CBNL_TAB_MAX));
-  cBigBuf2.checkexpand ((size_t)((nt < 0)? ((n2 + 3) * BITS + 1): (n2 + 3)));
+    CBNL nt = (CBNL)((n2 - n1 + _CBNL_TAB_MIN - 1) & (n2 - _CBNL_TAB_MAX));
+    cBigBuf2.checkexpand ((size_t)((nt < 0)? ((n2 + 3) * BITS + 1): (n2 + 3)));
 #else //_CBIGNUM_SHIFTTAB_DIV
-  cBigBuf2.checkexpand ((size_t)(n2 + 3));
+    cBigBuf2.checkexpand ((size_t)(n2 + 3));
 #endif//_CBIGNUM_SHIFTTAB_DIV
-  EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for divider.
+    EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);      // Buffer for divider.
 
 //      Copying and normalizing non-zero divider skipping low 0-words.
 //      If divider is 0 result will contain 0 words.
 
-  size_t k2 = cBigNumberCopySkipLow0 (p2, pp2); // Copying of divider.
+    size_t k2 = cBigNumberCopySkipLow0 (p2, pp2); // Copying of divider.
 
-//      Providing for same signs in dividend and divider.
+//      Providing for the same signs in dividend and divider.
 
-  if ((p1 [n1] ^ CBPTRBASE(p2)[n2]) < 0) cBigNumberNeg (pp2, pp2);
+    if ((p1 [n1] ^ CBPTRBASE(p2)[n2]) < 0) cBigNumberNeg (pp2, pp2);
 
-//      Algorithm with table of shifts.
+//      Generic algorithm with table of shifts.
 
 #ifdef  _CBIGNUM_SHIFTTAB_DIV
-  if (nt < 0)
-  {
-    cBigNumberTab (pp2);                        // Prepare table of shifts.
-    cBigNumberMModShlTab (p1, pp2, k2);         // Module.
-    return;
-  }
+    if (nt < 0)
+    {
+      cBigNumberTab (pp2);                      // Prepare table of shifts.
+      cBigNumberMModShlTab (p1, pp2, k2);       // Module.
+      return;
+    }
 #endif//_CBIGNUM_SHIFTTAB_DIV
 
-//      Algorithms that do not require for table of shifts.
+//      Generic algorithm that do not require for table of shifts.
 
-  n2 = (size_t)(*pp2);                          // Number of words.
-  if (n2 == 0)                                  // Check for division by 0.
-  {                                             // If division by 0
-    cBigNumberDiv0();                           // is enabled then module
-    return;                                     // is same as dividend.
-  }
-  assert (cBigNumberIsFit (p1));                // Check of normalization.
-  assert (cBigNumberIsFit (pp2));               // Check of normalization.
+    n2 = (size_t)(*pp2);                        // Number of words.
+    if (n2 == 0)                                // Check for division by 0.
+    {                                           // If division by 0
+      cBigNumberDiv0();                         // is enabled then module
+      return;                                   // is same as dividend.
+    }
+    assert (cBigNumberIsFit (pp2));             // Check of normalization.
 
-  size_t n = n2 + k2;                           // Number of words after shift.
-
-  if (n2 > 1 || n != n1)                        // Generic division.
-  {                                             // If dividend is shorter
-    if (n > n1) return;                         // the divider then module
-                                                // is same as dividend.
-    n = n1 - n + 1;                             // Word counter in quotient.
+    size_t n = n2 + k2;                         // Number of words after shift.
+    if (n1 < n) return;                         // Module is same as dividend,
+                                                // if divider is longer.
+    n = n1 - n + 1;                             // Word counter.
 
     assert ((p1 [n1] ^ pp2 [n2]) >= 0);         // Check if signs are the same.
     CBNL lt = (pp2 [n2] < 0) * 2 - 1;           // Constant to compare
                                                 // absolute values of numbers.
                                                 // (p1 and pp2 >= 0)? -1: 1
-    do                                          // Cycle on words of quotient.
+    do                                          // Cycle on words.
     {
-      --n;                                      // Word counter in quotient.
+      --n;                                      // Word counter.
       cBigNumberMShlD (pp2);                    // Word shift of divider.
       unsigned CBNL mask = ((unsigned CBNL)1)   // Initial mask.
                             << (BITS-1);
-      do                                        // Cycle on bits of quotient.
+      do                                        // Cycle on bits.
       {
         CBNL diff = (CBNL)cBigNumberMDiv2D (pp2)// Bit shift of divider.
                   + (CBNL)(n + k2) - *p1;       // Difference of sizes.
         if (diff <= 0 && (diff < 0 ||           // If remainder not less
-            cBigNumberCompHigh (p1, pp2) != lt))// then shifted divider,
-        {                                       // then
-          cBigNumberMSubD (p1, pp2, n + k2);    // subtract divider.
+            cBigNumberCompHigh (p1, pp2) != lt))// than shifted divider,
+        {                                       // then subtract
+          cBigNumberMSubD (p1, pp2, n + k2);    // shifted divider.
         }
       }
       while ((mask >>= 1) != 0);                // End of cycle on bits.
     }
     while (n);                                  // End of cycle on words.
+
     assert ((p1 [(size_t)(*p1)] ^ lt) < 0 ||    // Check if signs are the same
             (p1 [(size_t)(*p1)] + *p1) == 1);   // or remainder is 0.
   //assert (cBigNumberComp (p1, pp2) == lt);    // Check if remainder<divider.
     assert (cBigNumberIsFit (p1));              // Check of normalization.
+#ifdef  _CBIGNUM_SMALL_DIV
+    return;
   }
-  else                                          // Single-word division.
+
+//      Optimized algorithms for single-word or double-word non-zero divider.
+
+  unsigned CBNL p1h = p1 [n1];                  // High word of dividend.
+
+//      Algorithms for dividend that is not longer than divider
+
+  if (n1 <= n2)                                 // Not longer dividend.
   {
-    CBNL p1n = p1 [n1];                         // Word of dividend.
-    CBNL p2n = pp2 [n2];                        // Word of divider.
-    assert ((p1n ^ p2n) >= 0);                  // Check if signs are the same.
-    assert (p2n != 0);                          // Check if not 0.
+//      If dividend is shorter than divider, we do not need to divide,
+//      except for case when divider is denormalized.
 
-#ifndef _CBIGNUM_HARDWARE_DIV
-    int nb = cLongBits (p1n) - cLongBits (p2n); // Difference in number of
-    if (nb >= 0)                                // meaning bits must be >= 0.
+CompareSize:
+    if (n1 == n2)                               // Compare size.
+
+//      Select algorithm for either double-word or single-word division.
+
+#if _CBIGNUM_SMALL_DIV > 1
+    switch (n2)
+#endif//_CBIGNUM_SMALL_DIV
     {
-      unsigned CBNL mask = ((unsigned CBNL)1)   // Initial mask.
-                            << nb;              // Align
-      p2n <<= nb;                               // divider to dividend.
+#if _CBIGNUM_SMALL_DIV > 1
+    case 2:                                     // Double-word dividend,
+    {                                           // double-word divider.
+      assert (n1 == 2 && n2 == 2);
 
-      if (p2n > 0)                              // Positive dividend.
-      {
-        for (;; p2n >>= 1)                      // Cycle on remaining bits
-        {                                       // of quotient.
-#ifdef  _CBIGNUM_REDUCE_JUMPS
-          CBNL m = ((p1n < p2n) - 1);           // If remainder not less
-          p1n -= p2n & m;                       // subtract divider.
-#else //_CBIGNUM_REDUCE_JUMPS
-          if (p1n >= p2n)                       // If remainder not less
-          {                                     // then shifted divider,
-            p1n -= p2n;                         // subtract divider.
-          }
-#endif//_CBIGNUM_REDUCE_JUMPS
-          if ((mask >>= 1) == 0) break;
-        }                                       // End of cycle on bits.
-      }
-      else                                      // Negative dividend.
-      {
-        for (;; p2n >>= 1)                      // Cycle on remaining bits
-        {                                       // of quotient.
-#ifdef  _CBIGNUM_REDUCE_JUMPS
-          CBNL m = ((p1n > p2n) - 1);           // If remainder not less
-          p1n -= p2n & m;                       // subtract divider.
-#else //_CBIGNUM_REDUCE_JUMPS
-          if (p1n <= p2n)                       // If remainder not less
-          {                                     // then shifted divider,
-            p1n -= p2n;                         // subtract divider.
-          }
-#endif//_CBIGNUM_REDUCE_JUMPS
-          if ((mask >>= 1) == 0) break;
-        }                                       // End of cycle on bits.
-        if (p1n == 0)                           // Correction for case
-        {                                       // when negative dividend
-          for (size_t n = n1; --n > 0;)         // have non-zero low words.
-          {
-            if (p1 [n] != 0) { p1n += p2n; break; }
-          }
+      if ((CBNL)p2h == ((CBNL)p2l >> (BITS-1))) // If divider not normalized,
+        goto LongerDividend;                    // select longer dividend.
+
+      unsigned CBNL p1l = p1 [1];               // Low word of dividend.
+
+//      Providing for the same signs in dividend and divider.
+
+      if ((CBNL)p1h < 0) {
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0); // Absolute value of dividend.
+        if ((CBNL)p1h < 0) goto LongerDividend; // Dividend -CBNL_MIN,0 is
+      }                                         // longer, here need normalized
+      assert ((CBNL)p1h >= 0);                  // non-negative dividend.
+
+      if ((CBNL)p2h < 0)
+        p2h = ~p2h + ((p2l = -(CBNL)p2l) == 0); // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && (p2h | p2l) > 0);
+
+//      Get difference in number of meaning bits.
+//      Difference is not greater BITS-1 because p1h has high bit 0.
+
+      CBNC nb = (int)_ulzcntCBNL (p2h) - (int)_ulzcntCBNL (p1h);
+      if (nb >= 0)                              // Dividend is not shorter
+      {                                         // than divider.
+        assert ((unsigned CBNC)nb < BITS);      // Check for limits of shift.
+        p2h = _ushldCBNL (p2l, p2h, nb);        // Align divider to dividend.
+        p2l = _ushlCBNL (p2l, nb);
+        do                                      // Cycle on bits.
+        {                                       // If remainder not less,
+          unsigned CBNL pnh, pnl;               // subtract divider.
+          _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+          if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
         }
+        while ((p2l = _ushrd1CBNL (p2l, p2h),
+                p2h >>= 1, --nb) >= 0);         // End of cycle on bits.
       }
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [2] < 0)                           // Sign inversion of remainder.
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0);
+      p1 [0] = 1 + ((CBNL)p1h != ((CBNL)p1l >> (BITS-1)));
+      p1 [1] = p1l; p1 [2] = p1h;               // Store remainder and size.
+      assert (cBigNumberIsFit (p1));            // Check of normalization.
+      break; /* switch */
     }
+
+//      Single-word division can be hardware, if enabled.
+
+    default: /* n1 == 1 */                      // Single-word dividend
+                                                // single-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+      assert (n1 == 1 && n2 == 1);
+
+//      Providing for the same signs in dividend and divider.
+
+      if ((CBNL)p1h < 0) p1h = -(CBNL)p1h;      // Absolute value of dividend.
+      assert (p1h <= (unsigned CBNL)(CBNL_MIN));
+
+      if ((CBNL)p2h < 0) p2h = -(CBNL)p2h;      // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && p2h != 0);
+
+#ifdef  _CBIGNUM_HARDWARE_DIV
+      p1h %= p2h;                               // Get remainder.
 #else //_CBIGNUM_HARDWARE_DIV
-    if (p1n != CBNL_MIN || p2n != -1)            // Fix CPU crash.
-    {
-      p1n = p1n % p2n;                           // Remainder.
-    }
-    else                                         // CBNL_MIN/-1.
-    {
-      p1n = 0;                                   // Remainder.
-    }
-    if (p2n < 0 && p1n == 0)                     // Correction for case
-    {                                            // when negative dividend
-      for (size_t n = n1; --n > 0;)              // have non-zero low words.
-      {
-        if (p1 [n] != 0) { p1n += p2n; break; }
+
+//      Get difference in number of meaning bits.
+//      Difference is not greater BITS-1 because p2h cannot be 0.
+
+      CBNC nb = (int)_ulzcntCBNL (p2h) - (int)_ulzcntCBNL (p1h);
+      if (nb >= 0)                              // Get difference in number
+      {                                         // of meaning bits.
+        assert ((unsigned CBNC)nb < BITS);      // Check for limits of shift.
+        p2h <<= nb;                             // Align divider to dividend.
+        do                                      // Cycle on bits.
+        {
+          CBNL pnh = p1h - p2h;                 // If remainder not less,
+          if (pnh >= 0) p1h = pnh;              // subtract divider.
+        }
+        while ((p2h >>= 1, --nb) >= 0);         // End of cycle on bits.
       }
-    }
 #endif//_CBIGNUM_HARDWARE_DIV
 
-    p1 [n1] = p1n;                              // Store remainder.
-    cBigNumberFit (p1);                         // Normalization.
-    assert ((p1 [(size_t)(*p1)] ^ pp2 [n2]) >= 0// Check if signs are the same
-         || (p1 [(size_t)(*p1)] + *p1) == 1);   // or remainder is 0.
+      assert (p1h <= (unsigned CBNL)(CBNL_MIN));
+      if (p1 [1] >= 0) p1 [1] = p1h;            // Store remainder.
+      else             p1 [1] = -(CBNL)p1h;     // Sign inversion of remainder.
+    }
+    else if ((CBNL)p2h == ((CBNL)p2l >> (BITS-1)) ||
+             p2h == 0 && p2l == (((unsigned CBNL)1) << (BITS-1)))
+    {                                           // If longer divider have
+      p2h = p2l; --n2; goto CompareSize;        // redundant high word delete
+    }                                           // it and compare size again.
   }
+
+//      Algorithms for multiple-word dividend that is longer than divider.
+//      These algorithms has two parts. The first one reduces remainder
+//      to size of divider and the second one do equal-size division.
+
+  else /* n1 > n2 */                            // Longer dividend.
+  {
+#if _CBIGNUM_SMALL_DIV > 1
+LongerDividend:
+#endif//_CBIGNUM_SMALL_DIV
+    if ((CBNL)p1h < 0) {                        // If negative dividend
+      p1 [0] = p1h;                             // save sign of dividend and
+      size_t n = 0;                             // convert to absolute value.
+      do ++n; while ((p1 [n] = p1h = -p1 [n]) == 0); ++n;
+      if (n <= n1) do p1 [n] = p1h = ~p1 [n]; while (++n <= n1);
+      else if ((CBNL)p1h < 0) { p1h = 0; ++n1; }// Add zero word for -CBNL_MIN
+    }                                           // thus obtaining normalized
+    assert ((CBNL)p1h >= 0);                    // non-negative dividend.
+
+//      Left shift of dividend to get maximal value with high bit 0.
+
+    CBNC nb1 = (int)_ulzcntCBNL (p1h) - 1;      // Left shift of dividend.
+    assert ((unsigned CBNC)nb1 < BITS);         // Check for limits if shift.
+
+//      Select algorithm for either double-word or single-word divider.
+
+#if _CBIGNUM_SMALL_DIV > 1
+    switch (n2)
+#endif//_CBIGNUM_SMALL_DIV
+    {
+#if _CBIGNUM_SMALL_DIV > 1
+    case 2:                                     // Multiple-word dividend,
+    if ((CBNL)p2h != ((CBNL)p2l >> (BITS-1)))   // double-word divider
+    {                                           // that must be normalized.
+      assert (n1 > 2);
+
+      if ((CBNL)p2h < 0)
+        p2h = ~p2h + ((p2l = -(CBNL)p2l) == 0); // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && (p2h | p2l) > 0);
+
+//      Shift divider left to get maximal value with high bit 0,
+//      except for special divider -CBNL_MIN,0 that remains unshifted.
+
+      CBNC nb2 = (int)_ulzcntCBNL (p2h) - 1;    // Left shift of divider.
+      if (nb2 < 0) nb2 = 0;                     // Case -CBNL_MIN,0.
+      assert ((unsigned CBNC)nb2 < BITS);       // Check for limits of shift.
+      p2h = _ushldCBNL (p2l, p2h, nb2);         // Shift high word of divider.
+      p2l = _ushlCBNL (p2l, nb2);               // Shift low word of divider.
+      assert (p2h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Shift dividend left to get maximal value with high bit 0.
+
+      unsigned CBNL p1l = p1 [--n1];            // Lower word of dividend.
+      unsigned CBNL p1n = 0;                    // Next word of dividend.
+      if (nb1 > 0)                              // Left shift dividend to have
+      {                                         // only one high zero bit.
+        p1n = p1 [--n1];                        // Load next word of dividend.
+        p1h = _ushldCBNL (p1l, p1h, nb1);       // Shift high word of dividend.
+        p1l = _ushldCBNL (p1n, p1l, nb1);       // Shift lower word of dividend.
+        p1n = _ushlCBNL (p1n, nb1);             // Shift next word of dividend.
+        nb1 -= BITS;
+      }
+      assert (p1h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Calculate module (remainder).
+
+      for (;;)                                  // Cycle on bits.
+      {                                         // If remainder not less,
+        unsigned CBNL pnh, pnl;                 // subtract divider.
+        _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+        if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
+        if (++nb1 > 0)                          // No more bits in the word.
+        {
+          if (--n1 == 0) break;                 // No more words in dividend.
+          p1n = p1 [n1]; nb1 -= BITS;           // Next word of dividend.
+        }
+        p1h = _ushld1CBNL (p1l, p1h);           // Left shift of remainder.
+        p1l = _ushld1CBNL (p1n, p1l);
+        p1n += p1n;
+      }                                         // End of cycle on bits.
+
+//      Double-word division for the last two words of remainder.
+
+      while ((p2l = _ushrd1CBNL (p2l, p2h),
+              p2h >>= 1, --nb2) >= 0)           // Cycle on bits.
+      {                                         // If remainder not less,
+        unsigned CBNL pnh, pnl;                 // subtract divider.
+        _sbbCBNL (_subCBNL (p1l, p2l, &pnl), p1h, p2h, &pnh);
+        if ((CBNL)pnh >= 0) p1h = pnh; p1l = (CBNL)pnh >= 0? pnl: p1l;
+      }                                         // End of cycle on bits.
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [0] < 0) {                         // Sign inversion of remainder.
+        p1h = ~p1h + ((p1l = -(CBNL)p1l) == 0);
+      }
+      p1 [0] = 1 + ((CBNL)p1h != ((CBNL)p1l >> (BITS-1)));
+      p1 [1] = p1l; p1[2] = p1h;                // Store remainder and size.
+      assert (cBigNumberIsFit (p1));            // Check of normalization.
+      break; /* switch */
+    }                                           // Delete high word of divider
+    p2h = p2l;                                  // if not normalized.
+
+//      Algorithm for single-word dividend can use hardware division if enabled.
+
+    default: /* n2 == 1 */                      // Multiple-word dividend,
+                                                // single-word divider.
+#endif//_CBIGNUM_SMALL_DIV
+      assert (n1 > 1);
+
+      if ((CBNL)p2h < 0) p2h = -(CBNL)p2h;      // Absolute value of divider.
+      assert (p2h <= (unsigned CBNL)(CBNL_MIN) && p2h > 0);
+
+//      Shift divider left to get maximal value with high bit 0,
+//      except for special divider -CBNL_MIN that remains unshifted.
+
+      CBNC nb2 = (int)_ulzcntCBNL (p2h) - 1;    // Left shift of divider.
+      if (nb2 < 0) nb2 = 0;                     // Case -CBNL_MIN.
+      assert ((unsigned CBNC)nb2 < BITS);       // Check for limits of shift.
+      p2h <<= nb2;                              // Shift divider.
+      assert (p2h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Shift dividend left to get maximal value with high bit 0.
+
+      unsigned CBNL p1l = 0;                    // Next word of dividend.
+      if (nb1 > 0)                              // Left shift dividend to have
+      {                                         // only one high zero bit.
+        p1l = p1 [--n1];                        // Load next word of dividend.
+        p1h = _ushldCBNL (p1l, p1h, nb1);       // Shift high word of dividend.
+        p1l = _ushlCBNL (p1l, nb1);             // Shift next word of dividend.
+        nb1 -= BITS;
+      }
+      assert (p1h >= (((unsigned CBNL)1) << (BITS-2)));
+
+//      Calculate module (remainder).
+
+      for (;;)                                  // Cycle on bits.
+      {
+        CBNL pnh = p1h - p2h;                   // If remainder not less,
+        if (pnh >= 0) p1h = pnh;                // subtract divider.
+        if (++nb1 > 0)                          // No more bits in the word.
+        {
+          if (--n1 == 0) break;                 // No more words in dividend.
+          p1l = p1 [n1]; nb1 -= BITS;           // Next word of dividend.
+        }
+        p1h = _ushld1CBNL (p1l, p1h);           // Left shift of remainder.
+        p1l += p1l;
+      }                                         // End of cycle on bits.
+
+//      Single-word division for the last word of remainder.
+
+#ifdef  _CBIGNUM_HARDWARE_DIV
+      if (nb2 >= _CBNL_HARDDIV_BITS)            // Use hardware division if
+      {                                         // there are some high 0-bits.
+        p2h >>= nb2;                            // Restore unshifted divider.
+        p1h %= p2h;                             // Get remainder.
+      }
+      else                                      // Use binary division.
+#endif//_CBIGNUM_HARDWARE_DIV
+      while ((p2h >>= 1, --nb2) >= 0)           // Cycle on bits.
+      {
+        CBNL pnh = p1h - p2h;                   // If remainder not less,
+        if (pnh >= 0) p1h = pnh;                // subtract divider.
+      }                                         // End of cycle on bits.
+
+      assert ((CBNL)p1h >= 0);                  // Check if non-negative.
+      if (p1 [0] >= 0) p1 [1] = p1h;            // Store remainder.
+      else             p1 [1] = -(CBNL)p1h;     // Sign inversion of remainder.
+      p1 [0] = 1;                               // Size of remainder.
+    }
+  }
+#endif//_CBIGNUM_SMALL_DIV
+}
+
+//================================================
+//      Functions for limited operands.
+//================================================
+
+//      Function for CBNL multiplication obtaining double CBNL result.
+
+CBNL   _CBNL_C  cLongMul (                      // Multiplication l1 * l2.
+                        CBNL    l1,             // Multiplicand.
+                        CBNL    l2,             // Multiplier.
+                        CBNL    p [2]           // Result.
+        )                                       // Returns loword of result.
+{
+  return (p [0] = _muldCBNL (l1, l2, p + 1));
+}
+
+//      Function for unsigned CBNL multiplication obtaining double result.
+
+unsigned
+CBNL   _CBNL_C  cULongMul (                     // Multiplication l1 * l2.
+                unsigned CBNL   l1,             // Unsigned multiplicand.
+                unsigned CBNL   l2,             // Unsigned multiplier.
+                unsigned CBNL   p [2]           // Unsigned result.
+        )                                       // Returns loword of result.
+{
+  return (p [0] = _umuldCBNL (l1, l2, p + 1));
+}
+
+//      Function of division by CBNL with module limited to two-words dividend.
+
+CBNL   _CBNL_C  cLongMDivMod (                  // Division p1 = p1 / p2
+                                                // with module   p1 % p2.
+                        CBNL    p1 [2],         // Dividend, then quotient.
+                        CBNL    l2              // Divider.
+        )                                       // Returns module.
+{
+  CBNL c1 [4]; c1 [0] = ((c1 [2] = p1 [1]) == ((c1 [1] = p1 [0]) >> (BITS-1)))?
+                        1: 2;                   // Buffer for dividend.
+  CBNL c2 [3]; c2 [0] = 1; c2 [1] = l2;         // Buffer for divider.
+  CBNL c  [5];                                  // Buffer for quotient.
+  EXPTR(CBNL) pp1 = EXPTRTO(CBNL,c1,sizeof(c1)/sizeof(*c1)-1);
+  EXPTR(CBNL) pp2 = EXPTRTO(CBNL,c2,sizeof(c2)/sizeof(*c2)-1);
+  EXPTR(CBNL) pp  = EXPTRTO(CBNL,c, sizeof(c) /sizeof(*c) -1);
+
+  cBigNumberMModDiv (pp1, pp2, pp);             // Division.
+
+  assert (c [0] <= 2);                          // Check for MIN/-1 overflow.
+  p1 [0] = c [1];                               // Quotient.
+  p1 [1] = c [2];                               // Quotient.
+
+  return c1 [1];                                // Module.
+}
+
+//      Function of CBNL module limited to two-words dividend.
+
+CBNL   _CBNL_C  cLongMod (                      // Module p1 % l2.
+                const   CBNL    p1 [2],         // Two-words dividend.
+                        CBNL    l2              // Divider.
+        )                                       // Returns module.
+{
+  CBNL c1 [4]; c1 [0] = ((c1 [2] = p1 [1]) == ((c1 [1] = p1 [0]) >> (BITS-1)))?
+                        1: 2;                   // Buffer for dividend.
+  CBNL c2 [3]; c2 [0] = 1; c2 [1] = l2;         // Buffer for divider.
+  EXPTR(CBNL) pp1 = EXPTRTO(CBNL,c1,sizeof(c1)/sizeof(*c1)-1);
+  EXPTR(CBNL) pp2 = EXPTRTO(CBNL,c2,sizeof(c2)/sizeof(*c2)-1);
+
+  cBigNumberMMod (pp1, pp2);                    // Division.
+
+  return c1 [1];                                // Module.
 }
 
 //================================================
@@ -3298,7 +4984,7 @@ void    cBigNumberMMod (                        // Module p1 %= p2.
 //      and requires it to be of same size as buffer for result.
 //      Both buffers must contain enough space for the result
 //      and also 2 auxiliary words for multiplication purposes.
-//      Note that if p2 contains more then 1 word and p1 is not one
+//      Note that if p2 contains more than 1 word and p1 is not one
 //      of -1,0,1 then size of buffers will be greater 512 Mbytes.
 //
 //      Function does not require for normalization of operands
@@ -3306,7 +4992,7 @@ void    cBigNumberMMod (                        // Module p1 %= p2.
 
 void    cBigNumberPow (                         // p1 in power p2.
                         EXPTR(CBNL) p1,         // Base in overwritten buffer
-                                                // of size >= *p + 3.
+                                                // of size *p + 3.
                 const   CBPTR(CBNL) p2,         // Degree.
                         EXPTR(CBNL) p           // Buffer for result
                                                 // of size *p + 3.
@@ -3325,36 +5011,33 @@ void    cBigNumberPow (                         // p1 in power p2.
     cBigNumberMModDiv (p, p1, p1);              // Return integer part 1/p1 or
     if (p1 [1] + (p2 [1] & 1) < 0) p1 [1] = 1;  // abs(1/p1) if degree is even.
     p [1] = p1 [1];
+    return;
   }
-  else if (n2 != 0)                             // Check if power may be not 1.
+  assert (CBPTRBASE(p2)[n2] >= 0);              // Check if non-negative.
+
+  n2 = cBigNumberWords (p2);                    // Number of meaning words.
+  if (n2 != 0)                                  // Check if power may be not 1.
   {
     p2++;                                       // Skip to number.
-    for (;;)                                    // Cycle on words of p2.
+    unsigned CBNL num = *p2++; --n2;            // Current word of p2.
+    unsigned CBNL mask = 1;                     // Mask for bits of num.
+    for (;;)                                    // Cycle on bits of p2.
     {
-      CBNL num = *p2++;                         // Current word of p2.
-      CBNL mask = 1;                            // Mask for bits of num.
-      if (--n2 == 0)                            // Reduce number of passes
-      {                                         // at the last cycle.
-        if (num == 0) break;                    // The high word p2 is 0.
-        do                                      // The high bit is always 0.
-          mask <<= 1;                           // Shift mask and num, while
-        while ((num <<= 1) > 0);                // the high bit of num is 0.
-      }
-      for (;;)                                  // Cycle on bits of word of p2.
-      {
-        if (num & mask)
-          cBigNumberMul (p1, p, p);             // Accumulation of power.
-        if ((mask <<= 1) == 0) break;           // No more bits.
-        cBigNumberMul (p1, p1, p1);             // Square of base.
-      }                                         // End of cycle on bits of p2.
-      if (n2 == 0) break;                       // No more words.
+      if (num & mask)                           // Check if bit of p2 is set.
+        cBigNumberMul (p1, p, p);               // Accumulation of power.
+      if (n2 == 0) {                            // Last word of p2.
+        if ((num >>= 1) == 0) break;            // No more bits in p2.
+      } else                                    // Not last word of p2.
+        if ((mask <<= 1) == 0) {                // No more bits in num.
+          num = *p2++; mask = 1; --n2;          // Next word of p2.
+        }
       cBigNumberMul (p1, p1, p1);               // Square of base.
-    }                                           // End of cycle on words of p2.
+    }                                           // End of cycle on bits of p2.
   }
 }
 
 //      Function of power by module uses buffer for base as work buffer
-//      and requires it to be not smaller then buffer for result.
+//      and requires it to be not smaller than buffer for result.
 //      Both buffers must be twice as large as buffer for module
 //      plus auxiliary word for multiplication purposes.
 //
@@ -3366,7 +5049,8 @@ void    cBigNumberPow (                         // p1 in power p2.
 
 void    cBigNumberPowMod (                      // p1 in power p2 by mod m
                         EXPTR(CBNL) p1,         // Base in overwritten buffer
-                                                // of size >= *mod * 2 + 3.
+                                                // of size max (*mod * 2 + 3,
+                                                //              *p1 + 2).
                 const   CBPTR(CBNL) p2,         // Degree.
                 const   CBPTR(CBNL) mod,        // Module (may overlap).
                         EXPTR(CBNL) p           // Buffer for result
@@ -3376,89 +5060,300 @@ void    cBigNumberPowMod (                      // p1 in power p2 by mod m
   assert (p1 != p);                             // Check if not overlap.
   assert (p2 != p);                             // Check if not overlap.
   assert (p2 != p1);                            // Check if not overlap.
-  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
 
   p [0] = 1; p [1] = 1;                         // Initial power is 1.
 
+  if (p1 [(size_t)(*p1)] < 0)                   // Check if base is negative.
+  {
+    cBigNumberNeg (p1, p1);                     // Sign inversion of base.
+    cBigNumberPowMod (p1, p2, mod, p);          // Power of positive base.
+    if (p2 [1] & 1) cBigNumberNeg (p, p);       // Sign inversion of result
+    return;                                     // if degree is not even.
+  }
+  assert (p1 [(size_t)(*p1)] >= 0);             // Check if non-negative.
   cBigNumberFit (p1);                           // Normalization.
+
+  size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
   if (CBPTRBASE(p2)[n2] < 0)                    // Check if degree is negative.
   {
-    cBigNumberMModDiv (p, p1, p1);              // Power is integral 1/p1 or
-    if (p1 [1] + (p2 [1] & 1) < 0) p1 [1] = 1;  // abs(1/p1) if degree is even.
+    cBigNumberMModDiv (p, p1, p1);              // Power is integral 1/p1.
     p [1] = p1 [1]; cBigNumberMMod (p, mod);    // Module of power.
     return;
   }
+  assert (CBPTRBASE(p2)[n2] >= 0);              // Check if non-negative.
+  p2++;                                         // Skip to number.
 
-  cBigTemp cBigBuf3;                            // Allocate temporary buffer.
-  cBigBuf3.checkexpand (exmuladd (BITS, (size_t)(*CBPTRBASE(mod)),
-                                  BITS * 3 + 1));
-  EXPTR(CBNL) pmod = EXPTRTYPE(cBigBuf3);       // Buffer for module.
+  size_t nmod = (size_t)(*CBPTRBASE(mod));      // Number of words.
+
+//      Get single-word unsigned module, if short enough.
+
+#ifdef  _CBIGNUM_SMALL_POWMOD
+  unsigned CBNL pmh = 0;                        // Single word of module or 0.
+  if (nmod == 1)                                // Single-word module.
+  {
+    pmh = CBPTRBASE(mod) [1];                   // Module.
+    if ((CBNL)pmh < 0) pmh = -(CBNL)pmh;        // Absolute value of module
+  }                                             // in the range 0..-CBNL_MIN.
+
+//      Power by module, either generic or optimized for single-word module.
+
+  if (pmh <= 1)                                 // Generic module.
+#endif//_CBIGNUM_SMALL_POWMOD
+
+//     Generic algorithm can be optimized for module contaning
+//     no more than _CBIGNUM_SMALL_DIV words.
+
+#ifdef  _CBIGNUM_SMALL_DIV
+  if (nmod > _CBIGNUM_SMALL_DIV)                // Generic module.
+#endif//_CBIGNUM_SMALL_DIV
+  {
+    cBigTemp cBigBuf3;                          // Allocate temporary buffer.
+    cBigBuf3.checkexpand (exmuladd (BITS, nmod, BITS * 3 + 1));
+    EXPTR(CBNL) pmod = EXPTRTYPE(cBigBuf3);     // Buffer for module.
 
 //      Copying and normalizing non-zero module skipping low 0-words.
-//      If divider is 0 result will contain 0 words.
+//      If module is 0 result will contain 0 words.
 
-  size_t kmod = cBigNumberCopySkipLow0 (mod, pmod);
+    size_t kmod = cBigNumberCopySkipLow0 (mod, pmod);
+    nmod = (size_t)(*pmod);                     // Number of words.
 
-//      Checking for division by 0 and providing for positive sign of module.
-  {
-    size_t nmod = (size_t)(*pmod);              // Number of words.
-    if (nmod == 0) n2 = 0;                      // Division by 0.
-    if (pmod [nmod] < 0) cBigNumberNeg (pmod, pmod);
-  }
-//      Preparing of module for division with table of shifts.
+//      Checking for division by 0.
 
-  cBigNumberTab (pmod);                         // Prepare table of shifts.
+    if (nmod == 0) { cBigNumberDiv0(); return; }
 
-//      Obtaining module of initial power (0 if module is 1, otherwise 1).
-//      Also, handle division by 0 if not allowed.
+//      Providing for positive sign of module,
+//      and prepare table of shifts for division.
 
-  cBigNumberMModShlTab (p, pmod, kmod);         // Module of power.
+    if (pmod [nmod] < 0) nmod = cBigNumberNeg (pmod, pmod);
+    cBigNumberTab (pmod);                       // Prepare table of shifts.
 
-  if (n2 != 0 && p [1] != 0)                    // Check if power may change.
-  {
-    p2++;                                       // Skip to number.
+//      Initialize power. Special case is degree 0 and module 1/-1,
+//      for which we force the power to be correct 0.
 
-//      Make sign of base positive (for division with table of shifts).
+    p [1] = (nmod + kmod != 1 || pmod [nmod] != 1);
 
-    CBNL sign = p1 [(size_t)(*p1)];             // Sign of base in high bit.
-    if (sign < 0)
-    {
-      cBigNumberNeg (p1, p1);                   // Sign inversion of base.
-      sign = (*p2 << (BITS-1));                 // Sign of result in high bit.
-    }
+//      Prepare base to fit into the buffer after multiplication.
+
     cBigNumberMModShlTab (p1, pmod, kmod);      // Module of base.
 
-//      Power by module.
+//      Generic power by module.
 
-    for (;;)                                    // Cycle on words of p2.
+    if (n2)                                     // Any words in p2?
     {
-      CBNL num = *p2++;                         // Current word of p2.
-      CBNL mask = 1;                            // Mask for bits of num.
-      if (--n2 == 0)                            // Reduce number of passes
-      {                                         // at the last cycle.
-        if (num == 0) break;                    // The high word p2 is 0.
-        do                                      // The high bit is always 0.
-          mask <<= 1;                           // Shift mask and num, while
-        while ((num <<= 1) > 0);                // the high bit of num is 0.
-      }
-      for (;;)                                  // Cycle on bits of word of p2.
+      unsigned CBNL num = *p2++; --n2;          // Current word of p2.
+      unsigned CBNL mask = 1;                   // Mask for bits of num.
+      for (;;)                                  // Cycle on bits of p2.
       {
-        if (num & mask)
-        {                                       // Accumulation of power.
-          if (*p1 > *p) cBigNumberMul (p1, p, p);
-          else          cBigNumberMul (p, p1, p);
-          cBigNumberMModShlTab (p, pmod, kmod);// Module of power.
+        if (num & mask)                         // Check if bit of p2 is set.
+        {
+          cBigNumberMul (p1, p, p);             // Accumulation of power.
+          cBigNumberMModShlTab (p, pmod, kmod); // Module of power.
         }
-        if ((mask <<= 1) == 0) break;           // No more bits.
+        if (n2 == 0) {                          // Last word of p2.
+          if ((num >>= 1) == 0) break;          // No more bits in p2.
+        } else                                  // Not last word of p2.
+          if ((mask <<= 1) == 0) {              // No more bits in num.
+            num = *p2++; mask = 1; --n2;        // Next word of p2.
+          }
         cBigNumberMul (p1, p1, p1);             // Square of base.
         cBigNumberMModShlTab (p1, pmod, kmod);  // Module of square of base.
       }                                         // End of cycle on bits of p2.
-      if (n2 == 0) break;                       // No more words.
-      cBigNumberMul (p1, p1, p1);               // Square of base.
-      cBigNumberMModShlTab (p1, pmod, kmod);    // Module of square of base.
-    }                                           // End of cycle on words of p2.
-    if (sign < 0) cBigNumberNeg (p, p);         // Sign inversion.
+    }
   }
+#ifdef  _CBIGNUM_SMALL_DIV
+  else                                          // Short module.
+  {
+//      Normalization and checking for division by 0.
+//      Also set correct power 0 for case of degree 0 and module 1/-1.
+
+#ifndef _CBIGNUM_SMALL_POWMOD
+    unsigned CBNL
+#endif
+    pmh = CBPTRBASE(mod) [nmod];                // High word of module.
+#if _CBIGNUM_SMALL_DIV > 1
+    for (;;)
+    if (nmod > 1) {                             // More than one word?
+      if ((CBNL)pmh != (mod [nmod - 1] >> (BITS-1))) break;
+      pmh = mod [nmod - 1]; --nmod;             // Delete redundant word.
+    } else {
+#endif
+      if (pmh == 0) { cBigNumberDiv0(); return; }
+      p [1] = ((unsigned CBNL)(pmh + 1) > 2);   // Module not 1 or -1.
+#if _CBIGNUM_SMALL_DIV > 1
+      break;
+    }
+#endif
+
+//      Prepare base to fit into the buffer after multiplication.
+
+    cBigNumberMMod (p1, mod);                   // Module of base.
+
+//      Generic power by module for small divider.
+
+    if (n2)                                     // Any words in p2?
+    {
+      unsigned CBNL num = *p2++; --n2;          // Current word of p2.
+      unsigned CBNL mask = 1;                   // Mask for bits of num.
+      for (;;)                                  // Cycle on bits of p2.
+      {
+        if (num & mask)                         // Check if bit of p2 is set.
+        {
+          cBigNumberMul (p1, p, p);             // Accumulation of power.
+          cBigNumberMMod (p, mod);              // Module of power.
+        }
+        if (n2 == 0) {                          // Last word of p2.
+          if ((num >>= 1) == 0) break;          // No more bits in p2.
+        } else                                  // Not last word of p2.
+          if ((mask <<= 1) == 0) {              // No more bits in num.
+            num = *p2++; mask = 1; --n2;        // Next word of p2.
+          }
+        cBigNumberMul (p1, p1, p1);             // Square of base.
+        cBigNumberMMod (p1, mod);               // Module of square of base.
+      }                                         // End of cycle on bits of p2.
+    }
+  }
+#endif//_CBIGNUM_SMALL_DIV
+#ifdef  _CBIGNUM_SMALL_POWMOD
+  else                                          // Single-word module > 1.
+  {
+    assert (pmh > 1 && pmh <= (unsigned CBNL)(CBNL_MIN));
+
+//      Prepare base to contain no more significant bits than module.
+
+    cBigNumberMMod (p1, mod);                   // Module of base.
+    unsigned CBNL p1h = p1 [1];                 // Accumulated squared base.
+    unsigned CBNL ph = 1; /* (pmh > 1) */       // Accumulated power.
+
+//      Single-word power by unsigned module. Range may be 2..-CBNL_MIN.
+
+    if (n2)                                     // Any words in p2?
+    {                                           // Check range.
+      unsigned CBNL num = *p2++; --n2;          // Current word of p2.
+      unsigned CBNL mask = 1;                   // Mask for bits of num.
+
+//      To optimize module operations, get lower estimation for number
+//      of high zero bits in their results. For this estimation we use
+//      the number of high zero bits in module except for special case
+//      of module -CBNL_MIN for which estimation is 1 instead of 0.
+//      The range of estimation is 1..BITS-1.
+
+      unsigned CBNC nb = BITS - (unsigned CBNC)cLongBits (pmh);
+
+//      Optimized division, either hardware, binary or combined.
+//      Hardware division is used if enabled.
+
+#ifdef _CBIGNUM_HARDWARE_DIV
+      if (nb >= BITS/2)                         // Half-word module:
+      {                                         // hardware division.
+        for (;;)                                // Cycle on bits of p2.
+        {
+          if (num & mask)                       // Check if bit of p2 is set.
+          {
+            ph *= p1h; ph %= pmh;               // Accumulation of power.
+          }
+          if (n2 == 0) {                        // Last word of p2.
+            if ((num >>= 1) == 0) break;        // No more bits in p2.
+          } else                                // Not last word of p2.
+            if ((mask <<= 1) == 0) {            // No more bits in num.
+              num = *p2++; mask = 1; --n2;      // Next word of p2.
+            }
+          p1h *= p1h; p1h %= pmh;               // Square of base by module.
+        }                                       // End of cycle on bits of p2.
+      }
+      else if (nb >= _CBNL_HARDDIV_BITS)        // Get single-word remainder by
+      {                                         // subtraction then division.
+        unsigned CBNL pm = pmh;                 // Save module for division.
+        pmh <<= (nb - 1);                       // Left shifted module for
+        assert (cLongBits (pmh) == BITS-1);     // using as subtracter.
+        nb = nb + nb - 1;                       // Initial shift of product.
+        for (;;)                                // Cycle on bits of p2.
+        {
+          if (num & mask)                       // Check if bit of p2 is set.
+          {                                     // Accumulation of power.
+            unsigned CBNL pp;                   // Buffer for hiword.
+            ph = _umuldCBNL (p1h, ph, &pp);     // Accumulation of power.
+            unsigned CBNL pl = ph << nb;        // Shifted remainder (loword).
+            ph = _ushldCBNL (ph, pp, nb);       // Shifted remainder (hiword).
+            unsigned CBNC nbb = nb - BITS;      // Counter of remaining shift.
+            do
+            {                                   // Divide by subtraction:
+              CBNL pnh = ph - pmh;              // if hiword of remainder not
+              if (pnh >= 0) ph = pnh;           // less subtract subtracter.
+              _USHLD1CBNL (pl, ph);             // Left shift remainder until
+            }                                   // total shift becomes BITS.
+            while (++nbb);
+            ph %= pm;                           // Divide CBNL remainder.
+          }
+          if (n2 == 0) {                        // Last word of p2.
+            if ((num >>= 1) == 0) break;        // No more bits in p2.
+          } else                                // Not last word of p2.
+            if ((mask <<= 1) == 0) {            // No more bits in num.
+              num = *p2++; mask = 1; --n2;      // Next word of p2.
+            }
+          {
+            unsigned CBNL pp;                   // Buffer for hiword.
+            p1h = _umuldCBNL (p1h, p1h, &pp);   // Square of base.
+            unsigned CBNL p1l = p1h << nb;      // Shifted remainder (loword).
+            p1h = _ushldCBNL (p1h, pp, nb);     // Shifted remainder (hiword).
+            unsigned CBNC nbb = nb - BITS;      // Counter of remaining shift.
+            do
+            {                                   // Divide by subtraction:
+              CBNL pnh = p1h - pmh;             // if hiword of remainder not
+              if (pnh >= 0) p1h = pnh;          // less subtract subtracter.
+              _USHLD1CBNL (p1l, p1h);           // Left shift remainder until
+            }                                   // total shift becomes BITS.
+            while (++nbb);
+            p1h %= pm;                          // Divide CBNL remainder.
+          }
+        }                                       // End of cycle on bits of p2.
+      }
+      else                                      // Binary-only division.
+#endif//_CBIGNUM_HARDWARE_DIV
+      {
+        for (;;)                                // Cycle on bits of p2.
+        {
+          if (num & mask)                       // Check if bit of p2 is set.
+          {                                     // Accumulation of power.
+            unsigned CBNL pp;                   // Buffer for hiword.
+            ph = _umuldCBNL (p1h, ph, &pp);
+            unsigned CBNL pl = ph << nb;        // Shifted remainder (loword).
+            ph = _ushldCBNL (ph, pp, nb);       // Shifted remainder (hiword).
+            unsigned CBNC nbb = nb - BITS - 1;  // Counter of remaining shift.
+            for (;;)
+            {                                   // Divide by subtraction:
+              CBNL pnh = ph - pmh;              // if hiword of remainder not
+              if (pnh >= 0) ph = pnh;           // less subtract subtracter.
+              if (!++nbb) break;                // Left shift remainder until
+              _USHLD1CBNL (pl, ph);             // total shift becomes BITS.
+            }
+          }
+          if (n2 == 0) {                        // Last word of p2.
+            if ((num >>= 1) == 0) break;        // No more bits in p2.
+          } else                                // Not last word of p2.
+            if ((mask <<= 1) == 0) {            // No more bits in num.
+              num = *p2++; mask = 1; --n2;      // Next word of p2.
+            }
+          {
+            unsigned CBNL pp;                   // Buffer for hiword.
+            p1h = _umuldCBNL (p1h, p1h, &pp);   // Square of base.
+            unsigned CBNL p1l = p1h << nb;      // Shifted remainder (loword).
+            p1h = _ushldCBNL (p1h, pp, nb);     // Shifted remainder (hiword).
+            unsigned CBNC nbb = nb - BITS - 1;  // Counter of remaining shift.
+            for (;;)
+            {                                   // Divide by subtraction:
+              CBNL pnh = p1h - pmh;             // if hiword of remainder not
+              if (pnh >= 0) p1h = pnh;          // less subtract subtracter.
+              if (!++nbb) break;                // Left shift remainder until
+              _USHLD1CBNL (p1l, p1h);           // total shift becomes BITS.
+            }
+          }
+        }                                       // End of cycle on bits of p2.
+      }
+    }
+    assert (ph < pmh);                          // Check if less.
+    p [1] = ph;                                 // Result.
+  }
+#endif//_CBIGNUM_SMALL_POWMOD
 }
 
 //================================================
@@ -3567,7 +5462,7 @@ void    cBigNumberRandom (                      // Random value.
   size_t n1 = (size_t)(lBits / BITS + 1);       // Number of words.
 
   if (l1 != 0) l1 = cLongRandom (*pfnRand) &
-                    ((unsigned CBNL)~0L >> (BITS-(size_t)l1));
+                    (~(unsigned CBNL)0 >> (BITS-(size_t)l1));
   p [0] = (CBNL)n1;                             // Number of words.
   p [n1] = l1;                                  // The high word.
   while (--n1 != 0) p [n1] = cLongRandom (*pfnRand);
@@ -3576,7 +5471,7 @@ void    cBigNumberRandom (                      // Random value.
   assert (p [(size_t)(*p)] >= 0);               // Check if non-negative.
 }
 
-//      Generator returns uniform-distributed normalized CBNL random number,
+//      Generator returns uniform-distributed normalized CBNL random number.
 
 #if UCBNL_MAX > ULONG_MAX                       // Inline if CBNL is long.
 
@@ -3586,9 +5481,11 @@ unsigned CBNL _CBNL_C cLongRandom (             // Random value.
                 unsigned long (*pfnRand)()      // Random generator.
 )                                               // Returns random value.
 {
-  unsigned CBNL temp = (*pfnRand)();
-  int sh = LBITS; do temp |= (((CBNL)(*pfnRand)()) << LBITS); while ((sh += LBITS) < BITS);
-  return (temp);
+  unsigned CBNL lRand = (*pfnRand)();
+  int sh = LBITS;
+  do { sh += LBITS; lRand <<= LBITS; lRand |= (CBNL)(*pfnRand)(); }
+  while (sh < BITS);
+  return (lRand);
 }
 
 #endif

@@ -1,10 +1,10 @@
 /* --------------------------------------------------------------
-    Signed integers with unlimited range (version 2.0).
+    Signed integers with unlimited range (version 2.1b).
     Macro for compiler detection.
 
     http://www.imach.uran.ru/cbignum
 
-    Copyright 1999-2010 by Raul N.Shakirov, IMach of RAS(UB).
+    Copyright 1999-2017 by Raul N.Shakirov, IMach of RAS(UB).
     All Rights Reserved.
 
     Permission has been granted to copy, distribute and modify
@@ -25,7 +25,7 @@
 -------------------------------------------------------------- */
 
 /*
-    Visual C++ (64-bit).
+    Visual C++ in 64 bit mode (x64/Itanium).
 */
 #ifndef CBNL
 #ifdef  _MSC_VER
@@ -40,7 +40,7 @@
 #endif/*CBNL*/
 
 /*
-    Other.
+    Other translators.
 */
 #ifndef CBNL
 #define CBNL long
@@ -51,11 +51,19 @@
 #endif/*CBNL*/
 
 /* --------------------------------------------------------------
+    Type CBNC for bit counting in CBNL.
+-------------------------------------------------------------- */
+
+#ifndef CBNC
+#define CBNC int
+#endif/*CBNC*/
+
+/* --------------------------------------------------------------
     Calling convention for some time-critical functions.
 -------------------------------------------------------------- */
 
 /*
-    Visual C++ (32-bit).
+    Visual C++ 6.0 and above in 32 bit mode.
 */
 #ifndef _CBNL_C
 #ifdef  _MSC_VER
@@ -70,7 +78,7 @@
 #endif/*_CBNL_C*/
 
 /*
-    Other.
+    Other translators.
 */
 #ifndef _CBNL_C
 #define _CBNL_C
