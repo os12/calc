@@ -256,11 +256,6 @@ public:
   cBigNumber& smp   ();                                 // Data for mulsmp().
   cBigNumber& gc    ();                                 // Optimize memory.
   cBigNumber& pack  ();                                 // Truncate memory.
-const cBigNumber& fit   () const { return ((cBigNumber*)this)->fit();   }
-const cBigNumber& tab   () const { return ((cBigNumber*)this)->tab();   }
-const cBigNumber& smp   () const { return ((cBigNumber*)this)->smp();   }
-const cBigNumber& gc    () const { return ((cBigNumber*)this)->gc();    }
-const cBigNumber& pack  () const { return ((cBigNumber*)this)->pack();  }
 
 //      Method clear() from Exarray.h sets number to 0 and frees memory,
 //      here we must redefine if freeing is not allowed.
