@@ -29,12 +29,6 @@ static  int     log2_BITS = cLongExactLog2 (BITS);
 #pragma auto_inline (off)
 #endif/*_MSC_VER*/
 
-#ifndef _CBIGNUM_MT
-#define _CBIGS  static
-#else //_CBIGNUM_MT
-#define _CBIGS
-#endif//_CBIGNUM_MT
-
 //================================================
 //      Service objects in thread local storage.
 //================================================
@@ -58,16 +52,6 @@ exblockstack<long>            cBigTemp_sfict;   // Fictive array.
 #else
 exblockstack_t                cBigTemp_stack;   // Stack (not used).
 #endif//EXTHREAD_LOCAL
-
-//================================================
-//      Deprecated variables, not for reenterable
-//      code and mutithreaded applications.
-//================================================
-
-#ifndef _CBIGNUM_MT
-cBigNumber cBigNumberLastDivMod;                // Remainder of last division.
-cBigNumber cBigNumberLastRootRm;                // Remainder of last root.
-#endif//_CBIGNUM_MT
 
 //================================================
 //      Service functions.
@@ -212,9 +196,7 @@ cBigNumber& cBigNumber::pow2()
 
 cBigNumber& cBigNumber::sqrt()
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastRootRm;
-#endif//_CBIGNUM_MT
   swap (cBigNumberLastRootRm);
   return setsqrtrm (cBigNumberLastRootRm);
 }
@@ -440,33 +422,25 @@ cBigNumber& cBigNumber::setmul (CBNL a, CBNL b)
 
 cBigNumber& cBigNumber::setdiv (const cBigNumber& a, const cBigNumber& b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   return setdivmod (cBigNumberLastDivMod = a, b);
 }
 
 cBigNumber& cBigNumber::setdiv (const cBigNumber& a, CBNL b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   return setdivmod (cBigNumberLastDivMod = a, b);
 }
 
 cBigNumber& cBigNumber::setdiv (CBNL a, const cBigNumber& b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   return setdivmod (cBigNumberLastDivMod = a, b);
 }
 
 cBigNumber& cBigNumber::setdiv (CBNL a, CBNL b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   return setdivmod (cBigNumberLastDivMod = a, b);
 }
 
@@ -734,17 +708,13 @@ cBigNumber& cBigNumber::setpowmod (CBNL a, CBNL b, CBNL mod)
 
 cBigNumber& cBigNumber::setsqrt (const cBigNumber& b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastRootRm;
-#endif//_CBIGNUM_MT
   return setsqrtrm (cBigNumberLastRootRm = b);
 }
 
 cBigNumber& cBigNumber::setsqrt (CBNL b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastRootRm;
-#endif//_CBIGNUM_MT
   return setsqrtrm (cBigNumberLastRootRm = b);
 }
 
@@ -1020,9 +990,7 @@ cBigNumber& cBigNumber::submulsmp (const cBigNumber& a, CBNL b, size_t k)
 cBigNumber& cBigNumber::setdivtab (const cBigNumber& a, const cBigNumber& b,
                                    size_t k)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   cBigNumberLastDivMod = a;
   checkexpand (cBigNumberLastDivMod.normalize().length() + 2);
   cBigNumberMModDivShlTab (EXPTRTYPE(cBigNumberLastDivMod), CBPTRTYPE(b), k,
@@ -1034,9 +1002,7 @@ cBigNumber& cBigNumber::setdivtab (const cBigNumber& a, const cBigNumber& b,
 
 cBigNumber& cBigNumber::setdivtab (CBNL a, const cBigNumber& b, size_t k)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   cBigNumberLastDivMod = a;
   checkexpand (3);
   cBigNumberMModDivShlTab (EXPTRTYPE(cBigNumberLastDivMod), CBPTRTYPE(b), k,
@@ -1373,8 +1339,8 @@ cBigNumber& cBigNumber::setunsign (     // Conversion from unsigned char array.
 
 //      Zero-filling of stack of multipliers.
 
-    _CBIGS cBigNumber num_;                     // The highest multiplier.
-    _CBIGS exvector<cBigNumber> stk_ (MAX_NP_IN);
+    cBigNumber num_;                     // The highest multiplier.
+    exvector<cBigNumber> stk_ (MAX_NP_IN);
     EXPTR(cBigNumber) mul = EXPTRTYPE(stk_);    // Stack of multipliers.
     { for (size_t i = 1; i < np; i++) mul [i] = 0; }
 
@@ -1555,7 +1521,7 @@ char* cBigNumber::toa(  // Conversion to string.
     if (radix == 0)
         radix = 10;
     size_t i = 0;            // Index in buffer.
-    _CBIGS cBigNumber num_;  // The highest quotient.
+    cBigNumber num_;  // The highest quotient.
     num_ = *this;
     num_.normalize();
     if (fill & cBigNumber_unsign)
@@ -1637,9 +1603,9 @@ char* cBigNumber::toa(  // Conversion to string.
 
         //      Work stacks.
 
-        _CBIGS cBigNumber mod_;  // Module of division.
-        _CBIGS exvector<cBigNumber> stk_(MAX_TAB_OUT);
-        _CBIGS exvector<int> kstk_(MAX_TAB_OUT);
+        cBigNumber mod_;  // Module of division.
+        exvector<cBigNumber> stk_(MAX_TAB_OUT);
+        exvector<int> kstk_(MAX_TAB_OUT);
         EXPTR(cBigNumber) div = EXPTRTYPE(stk_);  // Stack of quotients.
         EXPTR(int) kdiv = EXPTRTYPE(kstk_);       // Stack of flags.
 

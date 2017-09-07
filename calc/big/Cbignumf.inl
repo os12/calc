@@ -1447,11 +1447,7 @@ size_t  _cBigNumberSubS (                       // Subtraction p = p2 - p1.
 
 //      Static number of low 0-words + 1 (obsoleted, to be excluded).
 
-#ifndef _CBIGNUM_MT
-static  size_t  _cBigNumberSkip = 1;            // Number of low 0-words + 1.
-#else //_CBIGNUM_MT
 #define _cBigNumberSkip 1
-#endif//_CBIGNUM_MT
 
 //      Function to count number of low 0-words.
 
@@ -1470,10 +1466,6 @@ size_t _CBNL_C  cBigNumberSkipLow0 (            // Count low 0-words.
   }
   while (--n1 != 0);
 
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = n;                          // Number of low 0-words + 1.
-#endif//_CBIGNUM_MT
-
   return (n);                                   // Number of low 0-words + 1.
 }
 
@@ -1491,10 +1483,6 @@ size_t _CBNL_C  cBigNumberCopySkipLow0 (        // Shift p = p1 >> exwords(p1).
         )                                       // p1, p may overlap.
                                                 // Returns num of 0-words.
 {
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
-
   size_t n1 = (size_t)(*CBPTRBASE(p1));         // Number of words.
 
 //      Normalization.
@@ -1555,9 +1543,6 @@ void   _CBNL_C  cBigNumberMAddM (               // Addition p1 += p2<<k2*BITS.
 {
   const CBPTR(CBNL) pp = p1 + (size_t)(*p1);    // The last word of p1.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words p2.
-#ifndef _CBIGNUM_MT
-  assert (_cBigNumberSkip > 0);                 // Check of parameter.
-#endif//_CBIGNUM_MT
   assert ((size_t)(*p1) >= n2 + k2);            // Check of size.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
@@ -1653,9 +1638,6 @@ void   _CBNL_C  cBigNumberMSubM (               // Subtract p1 -= p2<<k2*BITS.
 {
   const CBPTR(CBNL) pp = p1 + (size_t)(*p1);    // The last word of p1.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words p2.
-#ifndef _CBIGNUM_MT
-  assert (_cBigNumberSkip > 0);                 // Check of parameter.
-#endif//_CBIGNUM_MT
   assert ((size_t)(*p1) >= n2 + k2);            // Check of size.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
   p1 += k2;                                     // Scaling of p2.
@@ -1746,9 +1728,6 @@ size_t _CBNL_C _cBigNumberMSubD (               // Subtract p1 -= p2<<k2*BITS.
         )                                       // p1, p2 may overlap.
 {
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words p2.
-#ifndef _CBIGNUM_MT
-  assert (_cBigNumberSkip > 0);                 // Check of parameter.
-#endif//_CBIGNUM_MT
   assert ((p1 [(size_t)(*p1)] ^ p2 [n2]) >= 0); // Check of sign.
   assert ((size_t)(*p1) >= n2 + k2);            // Check of size.
   assert (n2 >= _cBigNumberSkip);               // Check of size.
@@ -1840,9 +1819,6 @@ size_t _CBNL_C _cBigNumberMMul2M (              // Shift p1 <<= 1.
         )
 {
   size_t n1 = (size_t)(*p1);                    // Number of words.
-#ifndef _CBIGNUM_MT
-  assert (_cBigNumberSkip > 0);                 // Check of parameter.
-#endif//_CBIGNUM_MT
   assert (n1 >= _cBigNumberSkip);               // Check of size.
 
   const CBPTR(CBNL) pp = p1 + n1;               // The last word of p1.
@@ -1885,9 +1861,6 @@ size_t _CBNL_C _cBigNumberMDiv2D (              // Shift p1 >>= 1.
         )
 {
   size_t n1 = (size_t)(*p1);                    // Number of words.
-#ifndef _CBIGNUM_MT
-  assert (_cBigNumberSkip > 0);                 // Check of parameter.
-#endif//_CBIGNUM_MT
   assert (n1 >= _cBigNumberSkip);               // Check of size.
   assert ((p1 [_cBigNumberSkip] & (CBNL)1)==0); // Check of lowest bit.
 
@@ -1957,9 +1930,6 @@ void    cBigNumberMAddShl (                     // Addition p1 += p2<<k2*BITS.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
 
   cBigNumberFitTo (p1, n2 + k2 + 1);            // Denormalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
   if (n2 > 0) cBigNumberMAddM (p1, p2, k2);     // Fast addition.
 
   cBigNumberFit (p1);                           // Normalization.
@@ -1976,9 +1946,6 @@ void    cBigNumberMSubShl (                     // Subtract p1 -= p2<<k2*BITS.
   size_t n2 = (size_t)(*CBPTRBASE(p2));         // Number of words.
 
   cBigNumberFitTo (p1, n2 + k2 + 1);            // Denormalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
   if (n2 > 0) cBigNumberMSubM (p1, p2, k2);     // Fast subtraction.
 
   cBigNumberFit (p1);                           // Normalization.
@@ -2055,9 +2022,6 @@ void    cBigNumberMAddMulShl (                  // Addition of multiplication
   }
 
   cBigNumberFit (p);                            // Normalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 void    cBigNumberMSubMulShl (                  // Subtract of multiplication
@@ -2112,9 +2076,6 @@ void    cBigNumberMSubMulShl (                  // Subtract of multiplication
   }
 
   cBigNumberFit (p);                            // Normalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 #endif//_CBIGNUM_HARDWARE_MUL
@@ -2197,9 +2158,6 @@ void    cBigNumberMAddMulShlTab (               // Addition of multiplication
   }
 
   cBigNumberFit (p);                            // Normalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 void    cBigNumberMSubMulShlTab (               // Subtract of multiplication
@@ -2267,9 +2225,6 @@ void    cBigNumberMSubMulShlTab (               // Subtract of multiplication
   }
 
   cBigNumberFit (p);                            // Normalization.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 #ifndef _CBIGNUM_HARDWARE_MUL                   // If not in Cbignumf.cpp.
@@ -2871,9 +2826,6 @@ void    cBigNumberMModDivShlTab (               // Division
 
   cBigNumberFit (p);                            // Normalization of quotient.
   assert (p [(size_t)(*p)] >= 0);               // Check if non-negative.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 //      Universal function of division with module works for
@@ -3157,10 +3109,6 @@ void    cBigNumberMModShlTab (                  // Module p1 %= p2 << k2*BITS.
   {                                             // If division by 0
     cBigNumberDiv0();                           // is enabled then module
   }
-
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 }
 
 //      Universal function of module works for numbers
@@ -3539,9 +3487,6 @@ void    cBigNumberMRmSqrt (                     // Square root.
   EXPTR(CBNL) pp2 = EXPTRTYPE(cBigBuf2);        // Buffer for subtracter.
   *pp2 = 0;                                     // Initializing.
   cBigNumberFitTo (pp2, n1);                    // Filling by 0.
-#ifndef _CBIGNUM_MT
-  _cBigNumberSkip = 1;                          // Do not skip low 0-words.
-#endif//_CBIGNUM_MT
 
 //      Algorithm.
 

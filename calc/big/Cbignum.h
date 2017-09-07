@@ -41,29 +41,16 @@
 
 //================================================
 //      Support for multithreading and DLL.
-//      _CBIGNUM_MT         exclude non-reenterable methods.
 //      _CBIGNUM_TOATMP     enable method toatmp().
 //      EXTHREAD_LOCAL      prefix for local thread storage.
 //================================================
-
-#if 1
-#define _CBIGNUM_MT
-#endif
 
 #if 0
 #define _CBIGNUM_TOATMP
 #endif
 
-#ifndef _CBIGNUM_MT
-#define _CBIGNUM_TOATMP
-#endif//_CBIGNUM_MT
-
 #ifndef EXTHREAD_LOCAL
-#ifndef _CBIGNUM_MT
-#define EXTHREAD_LOCAL
-#else //_CBIGNUM_MT
 #include "Exthread.h"
-#endif//_CBIGNUM_MT
 #endif//EXTHREAD_LOCAL
 
 //================================================
@@ -498,11 +485,6 @@ static  size_t  SqrTab  (unsigned radix, size_t len = 0, size_t max_np = 0);
 static  void  maskdiv0  (int);          // Mask division by 0.
 static  int   testdiv0  ();             // Is where division by 0?
 
-//      Access to internal static buffers (deprecated).
-#ifndef _CBIGNUM_MT
-static  cBigNumber& lastdivmod ();      // Module of last division.
-static  cBigNumber& lastrootrm ();      // Remainder of last square root.
-#endif//_CBIGNUM_MT
 };
 
 //================================================
@@ -615,10 +597,6 @@ extern "C" {
 //================================================
 
 extern  size_t      cBigNumberMaskDiv0;     // Mask for division by 0.
-#ifndef _CBIGNUM_MT
-extern  cBigNumber  cBigNumberLastDivMod;   // Module of last division.
-extern  cBigNumber  cBigNumberLastRootRm;   // Module of last square root.
-#endif//_CBIGNUM_MT
 
 //================================================
 //      Basic functions.
@@ -1119,18 +1097,14 @@ inline cBigNumber& cBigNumber::operator *= (CBNL b)
 
 inline cBigNumber& cBigNumber::operator /= (const cBigNumber& b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   swap (cBigNumberLastDivMod);
   return setdivmod (cBigNumberLastDivMod, b);
 }
 
 inline cBigNumber& cBigNumber::operator /= (CBNL b)
 {
-#ifdef  _CBIGNUM_MT
   cBigNumber cBigNumberLastDivMod;
-#endif//_CBIGNUM_MT
   swap (cBigNumberLastDivMod);
   return setdivmod (cBigNumberLastDivMod, b);
 }
@@ -1218,10 +1192,6 @@ inline  short   cBigNumber::toshort() const
 inline void cBigNumber::maskdiv0 (int mask) { cBigNumberMaskDiv0 = mask << 1; }
 inline int  cBigNumber::testdiv0()          { return cBigNumberMaskDiv0 == 1; }
 
-#ifndef _CBIGNUM_MT
-inline cBigNumber& cBigNumber::lastdivmod() { return cBigNumberLastDivMod; }
-inline cBigNumber& cBigNumber::lastrootrm() { return cBigNumberLastRootRm; }
-#endif//_CBIGNUM_MT
 
 //================================================
 //      Implementation of compare operations.

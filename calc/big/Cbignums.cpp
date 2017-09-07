@@ -30,12 +30,6 @@
 #pragma auto_inline (off)
 #endif/*_MSC_VER*/
 
-#ifndef _CBIGNUM_MT
-#define _CBIGS  static
-#else //_CBIGNUM_MT
-#define _CBIGS
-#endif//_CBIGNUM_MT
-
 //================================================
 //      Operator of stream input.
 //================================================
@@ -82,7 +76,7 @@ _CIOSTD istream& operator >> (_CIOSTD istream& is, cBigNumber& b)
 //      Input of symbols.
 
   cBigNumber::SqrTab (radix);           // Filling of cBigNumber::chartonum.
-  _CBIGS exarray<char> str_;            // Char array with digits.
+  exarray<char> str_;            // Char array with digits.
   size_t width = 0;                     // Number of chars in array.
   for (;;)
   {
@@ -146,7 +140,7 @@ _CIOSTD ostream& operator << (_CIOSTD ostream& os, const cBigNumber& b)
   if (flags & _CIOSTD ios::showbase)  fill |= cBigNumber_showbase;
   if (flags & _CIOSTD ios::showpos)   fill |= cBigNumber_showpos;
 
-  _CBIGS cBigString str;
+  cBigString str;
   os << b.toa (str, radix, width, fill);
   return os;
 }
