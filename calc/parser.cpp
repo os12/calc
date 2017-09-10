@@ -223,17 +223,17 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 
 namespace ast {
 
-Result Node::Compute(int indent) {
+Result Node::Compute(int indent) const {
     base::OutputDebugLine(std::string(indent, '\t') + Print());
     return DoCompute(indent);
 }
 
-Result Terminal::DoCompute(int indent) {
+Result Terminal::DoCompute(int indent) const {
     DCHECK(value.Valid());
     return value;
 }
 
-Result BinaryOp::DoCompute(int indent) {
+Result BinaryOp::DoCompute(int indent) const {
     auto lresult = left_ast->Compute(indent + 1);
     auto rresult = right_ast->Compute(indent + 1);
 
@@ -276,7 +276,7 @@ Result BinaryOp::DoCompute(int indent) {
     return lresult;
 }
 
-Result UnaryOp::DoCompute(int indent) {
+Result UnaryOp::DoCompute(int indent) const {
     auto r = arg_ast->Compute(indent + 1);
 
     // Deal with unary operators.
@@ -292,7 +292,7 @@ Result UnaryOp::DoCompute(int indent) {
     throw Exception("Unexpected unary op: " + ToString(op));
 }
 
-Result Function::DoCompute(int indent) {
+Result Function::DoCompute(int indent) const {
     std::deque<Result> results;
     for (const auto& arg : args)
         results.push_back(arg->Compute(indent + 1));

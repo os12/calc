@@ -72,10 +72,10 @@ struct Node {
     virtual ~Node() = default;
 
     // Returns the result of computation performed on the entire AST.
-    Result Compute(int indent);
+    Result Compute(int indent) const;
 
 protected:
-    virtual Result DoCompute(int indent) = 0;
+    virtual Result DoCompute(int indent) const = 0;
     virtual std::string Print() const = 0;
 };
 
@@ -86,7 +86,7 @@ struct Terminal : Node {
     const Result value;
 
 protected:
-    Result DoCompute(int indent) override;
+    Result DoCompute(int indent) const override;
     std::string Print() const override { return "Terminal: " + value.ToString(); };
 };
 
@@ -101,7 +101,7 @@ struct BinaryOp : Node {
     const std::unique_ptr<Node> left_ast, right_ast;
 
 protected:
-    Result DoCompute(int indent) override;
+    Result DoCompute(int indent) const override;
     std::string Print() const override { return "BinaryOp: " + ToString(op); };
 };
 
@@ -114,7 +114,7 @@ struct UnaryOp : Node {
     const std::unique_ptr<Node> arg_ast;
 
 protected:
-    Result DoCompute(int indent) override;
+    Result DoCompute(int indent) const override;
     std::string Print() const override { return "UnaryOp: " + ToString(op); };
 };
 
@@ -127,7 +127,7 @@ struct Function : Node {
     const std::list<std::unique_ptr<Node>> args;
 
 protected:
-    Result DoCompute(int indent) override;
+    Result DoCompute(int indent) const override;
     std::string Print() const override { return "Function: " + token.value; };
 };
 
