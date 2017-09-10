@@ -136,7 +136,7 @@ protected:
 // The Parser (and the Scanner) throw this object when the input is invalid.
 class Exception : public std::runtime_error {
 public:
-    Exception(std::string msg) : runtime_error(std::move(msg)) {}
+    Exception(std::string msg) : runtime_error(msg) {}
 };
 
 // The main parser interface:
