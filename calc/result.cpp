@@ -25,8 +25,8 @@ Result::Result(const Token& t) {
             r32 = stoul(t.value, &last, t.base);
         }
         catch (std::exception& e) {
-            base::OutputDebugLine("Invalid 32-bit input: " + t.value +
-                                  ". Error: " + e.what());
+            utils::OutputDebugLine("Invalid 32-bit input: " + t.value +
+                                   ". Error: " + e.what());
         }
         DCHECK_EQ(last, t.value.size());
     }
@@ -35,7 +35,11 @@ Result::Result(const Token& t) {
     if (t.CheckTypeFlags(Token::ValidFloat)) {
         DCHECK_EQ(t.base, 10);
         double fp64 = stold(t.value, &last);
+
+        // The scanner is quite careful not not let these through.
         DCHECK(last == t.value.size());
+        if (last != t.value.size())
+            throw Exception("Malformed floating-point number: " + t.value);
         rreal = fp64;
     }
 }

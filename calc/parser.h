@@ -151,7 +151,7 @@ inline Result Compute(const std::string& input) {
     if (ast == nullptr)
         return Result();
 
-    base::OutputDebugLine("Walking AST for exression: " + input);
+    utils::OutputDebugLine("Walking AST for exression: " + input);
     return ast->Compute(0);
 }
 

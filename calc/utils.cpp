@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-namespace base {
+namespace utils {
 
 void OutputDebugLine(const std::string& line) {
 #if defined(_DEBUG)

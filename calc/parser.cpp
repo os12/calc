@@ -224,7 +224,7 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 namespace ast {
 
 Result Node::Compute(int indent) const {
-    base::OutputDebugLine(std::string(indent, '\t') + Print());
+    utils::OutputDebugLine(std::string(indent, '\t') + Print());
     return DoCompute(indent);
 }
 
@@ -298,13 +298,13 @@ Result Function::DoCompute(int indent) const {
         results.push_back(arg->Compute(indent + 1));
 
     switch (results.size()) {
-        case 1:
-            results.front().ApplyFunction(token.value);
-            return results.front();
+    case 1:
+        results.front().ApplyFunction(token.value);
+        return results.front();
 
-        case 2:
-            results[0].ApplyFunction(token.value, results[1]);
-            return results[0];
+    case 2:
+        results[0].ApplyFunction(token.value, results[1]);
+        return results[0];
     }
     throw Exception("No known function takes " + std::to_string(results.size()) +
                     " arguments");

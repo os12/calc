@@ -29,34 +29,68 @@ bool IsHexOrFloatDigit(char c) {
     return IsHex(c) || c == '.';  // Note, 'e' for "0.1e2" is covered by IsHex()
 }
 
-bool ContainsHex(const std::string& s) {
+bool ContainsHexChars(const std::string& s) {
     for (auto c : s)
         if (toupper(c) >= 'A' && toupper(c) <= 'F')
             return true;
     return false;
 }
 
+bool ContainsFloatChars(const std::string& s) {
+    for (auto c : s) {
+        switch (c) {
+        case '.':
+        case 'e':
+        case 'E':
+            return true;
+        }
+    }
+    return false;
+}
+
 // Identifies floating-poing numbers such as ".1", "1e10" and "0.1e-10".
-bool IsFloat(const std::string &s) {
+bool IsValidFloat(const std::string &s) {
     if (s.size() >= 2)
         DCHECK(s.substr(0, 2) != "0x");
 
+    size_t dot = 0, e = 0, minus = 0;
     for (auto c : s) {
         if (isdigit(c))
             continue;
         switch (c) {
         case '.':
+            ++dot;
+            break;
         case 'e':
         case 'E':
+            ++e;
+            break;
         case '-':
+            ++minus;
             break;
         default:
             return false;
         }
     }
 
-    return s.find('.') != std::string::npos || s.find('e') != std::string::npos ||
-           s.find('E') != std::string::npos;
+    // Check for the "float" markers. The number cannot be a float literal without one
+    // of these.
+    if (dot == 0 && e == 0)
+        return false;
+    if (dot > 1 || e > 1)
+        return false;
+
+    // ".e", "e."
+    if (dot > 0 && e > 0) {
+        if (s.find('.') + 1 == s.find('e'))
+            return false;
+        if (s.find('e') + 1 == s.find('.'))
+            return false;
+        if (s.back() == '.')
+            return false;
+    }
+
+    return true;
 }
 
 const std::set<std::string> _functions = {
@@ -304,8 +338,12 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         return false;
     }
 
-    if (base == 10 && ContainsHex(number) && !IsFloat(number))
-        throw Exception("Malformed base/10 integer: " + number);
+    if (base == 10) {
+        if (ContainsHexChars(number) && !IsValidFloat(number))
+            throw Exception("Malformed base/10 integer: " + number);
+        if (ContainsFloatChars(number) && !IsValidFloat(number))
+            throw Exception("Malformed floating-poing number: " + number);
+    }
 
     // Deal with incomplete floating-poing numbers.
     if (IsE(number.back()) || number.back() == '-')
@@ -319,7 +357,7 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
             // Every base/10 integer is a valid float, yet floating-point numbers
             // are not integers.
             type_flags |= Token::ValidFloat;
-            if (!IsFloat(number))
+            if (!IsValidFloat(number))
                 type_flags |= Token::ValidInt;
             break;
         case 16:

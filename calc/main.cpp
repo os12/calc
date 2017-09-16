@@ -62,8 +62,6 @@ std::string Parse(std::string input, T& out_controls) {
 
 }  // namespace
 
-using namespace base;
-
 struct OutControl {
     OutControl() = default;
     OutControl(const nana::form& owner,
@@ -128,8 +126,7 @@ int __stdcall WinMain(
             auto msg = Parse(arg.widget.caption(), out_controls);
             statusbar.caption(msg);
         } catch (std::exception &e) {
-            // ClearAll();
-            OutputDebugLine(e.what());
+            utils::OutputDebugLine(e.what());
             statusbar.caption(std::string("<color=0xff0000 size=10>") + e.what() +
                               "</>");
         }

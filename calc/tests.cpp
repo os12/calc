@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "parser.h"
+#include "utils.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -144,6 +145,42 @@ bool Run() {
 
     Check32("0xFFFFFFFF", 0xFFFFFFFF);
     Check64("0x0FFFFFFFFFFFFFFF", 0x0FFFFFFFFFFFFFFFull);
+
+    // A long test to brute-force FP parsing
+#if 0
+    auto compute = [](const std::string& input) {
+        try {
+            utils::OutputDebugLine("Checking: " + input);
+            auto result = parser::Compute(input);
+            DCHECK(result.Valid());
+        } catch (parser::Exception&) {
+        }
+    };
+
+    const std::vector<char> alphabet = {'1', '2', 'e', '.', '-', 'f'};
+
+    std::function<void(size_t, std::string*)> select = [&](size_t len, std::string* s) {
+        DCHECK(len > 0);
+        const auto input_len = s->size();
+        for (char c : alphabet) {
+            s->resize(input_len);
+            *s += c;
+
+            compute(*s);
+            compute("0x" + *s);
+
+            if (len > 1)
+                select(len - 1, s);
+        }
+        s->resize(input_len);
+    };
+
+    for (size_t len = 1; len < 5; ++len) {
+        std::string s;
+        s.reserve(10);
+        select(len, &s);
+    }
+#endif
 
     return true;
 }
