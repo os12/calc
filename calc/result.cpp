@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "parser.h"
+#include "utils.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -20,7 +21,13 @@ Result::Result(const std::string& number, int base) {
         DCHECK_EQ(last, number.size());
         DCHECK_EQ(rbig.value().toCBNL(), r64.value());
 
-        r32 = stoul(number, &last, base);
+        try {
+            r32 = stoul(number, &last, base);
+        }
+        catch (std::exception& e) {
+            base::OutputDebugLine("Invalid 32-bit input: " + number +
+                                  ". Error: " + e.what());
+        }
         DCHECK_EQ(last, number.size());
     }
 

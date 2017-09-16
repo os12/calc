@@ -122,6 +122,9 @@ bool Run() {
     CheckReal("pi/2", M_PI_2);
     CheckReal("deg(pi/2)", 90.0);
 
+    Check32("0xFFFFFFFF", 0xFFFFFFFF);
+    Check64("0x0FFFFFFFFFFFFFFF", 0x0FFFFFFFFFFFFFFFull);
+
     return true;
 }
 
