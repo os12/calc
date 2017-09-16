@@ -21,21 +21,42 @@ const std::map<Token::Type, Operator> _known_bin_ops = {{Token::Minus, Operator:
                                                         {Token::Xor, Operator::Xor},
                                                         {Token::Pow, Operator::Pow}};
 
-bool IsHex(char c) {
-    return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
-}
+bool IsHex(char c) { return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F'); }
+
+bool IsE(char c) { return c == 'e' || c == 'E'; }
 
 bool IsHexOrFloatDigit(char c) {
-    return IsHex(c) || c == '.';
+    return IsHex(c) || c == '.';  // Note, 'e' for "0.1e2" is covered by IsHex()
 }
 
-bool NumberContainsHexChars(const std::string &s) {
-    for (auto c : s) {
-        DCHECK(IsHexOrFloatDigit(c));
-        if (!isdigit(c) && c != '.')
+bool ContainsHex(const std::string& s) {
+    for (auto c : s)
+        if (toupper(c) >= 'A' && toupper(c) <= 'F')
             return true;
-    }
     return false;
+}
+
+// Identifies floating-poing numbers such as ".1", "1e10" and "0.1e-10".
+bool IsFloat(const std::string &s) {
+    if (s.size() >= 2)
+        DCHECK(s.substr(0, 2) != "0x");
+
+    for (auto c : s) {
+        if (isdigit(c))
+            continue;
+        switch (c) {
+        case '.':
+        case 'e':
+        case 'E':
+        case '-':
+            break;
+        default:
+            return false;
+        }
+    }
+
+    return s.find('.') != std::string::npos || s.find('e') != std::string::npos ||
+           s.find('E') != std::string::npos;
 }
 
 const std::set<std::string> _functions = {
@@ -57,7 +78,7 @@ detail::Operator Token::GetBinOp() const {
 
 std::string ToString(Token::Type tt) {
     switch (tt) {
-    CASE(Int);
+    CASE(Number);
     CASE(LParen);
     CASE(RParen);
     CASE(Minus);
@@ -233,7 +254,8 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         }
     }
 
-    // The following variable-sized input must comprise an Integer.
+    // The following variable-sized input must comprise an integer or a floating-point
+    // quantity.
     auto it = buf_.begin();
     std::string number;
     int base = 10;
@@ -249,6 +271,12 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         switch (base) {
         case 10:
             if (IsHexOrFloatDigit(*it)) {
+                number += *(it++);
+                continue;
+            }
+
+            // Deal with '-' in floating-point cases such as "0.1e-1".
+            if (number.size() >= 2 && IsE(number.back()) && *it == '-') {
                 number += *(it++);
                 continue;
             }
@@ -276,12 +304,29 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         return false;
     }
 
-    if (base == 10 && NumberContainsHexChars(number))
-        throw Exception("Invalid input: hex chars in a base/10 number: " + number);
+    if (base == 10 && ContainsHex(number) && !IsFloat(number))
+        throw Exception("Malformed base/10 integer: " + number);
 
-    // We have a well-formed Integer if we reached EoF or a non-number char.
+    // Deal with incomplete floating-poing numbers.
+    if (IsE(number.back()) || number.back() == '-')
+        return false;
+
+    // We have a well-formed number if we reached EoF or a non-number char.
     if (eof || it != buf_.end()) {
-        *t = Token{Token::Int, number, base};
+        uint32_t type_flags = 0;
+        switch (base) {
+        case 10:
+            // Every base/10 integer is a valid float, yet floating-point numbers
+            // are not integers.
+            type_flags |= Token::ValidFloat;
+            if (!IsFloat(number))
+                type_flags |= Token::ValidInt;
+            break;
+        case 16:
+            type_flags |= Token::ValidInt;
+        }
+        *t = Token{number, base, type_flags};
+        DCHECK(Result(*t).Valid());
         buf_.erase(buf_.begin(), it);
         state_ = State::None;
         return true;

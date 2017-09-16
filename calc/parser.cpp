@@ -21,15 +21,15 @@ struct Context {
     Context(Context&&) = default;
 
     Result ConsumeInt() {
-        DCHECK_EQ(scanner_.Next().type, Token::Int);
-        Result r(scanner_.Next().value, scanner_.Next().base);
+        DCHECK_EQ(scanner_.Next().type, Token::Number);
+        Result r(scanner_.Next());
         scanner_.Pop();
         return r;
     }
 
     Result ConsumeConstant() {
         DCHECK_EQ(scanner_.Next().type, Token::Pi);
-        Result r(STRINGIFY(M_PI));
+        Result r(Token(STRINGIFY(M_PI), 10, Token::ValidFloat));
         DCHECK(r.rreal);
         scanner_.Pop();
         return r;
@@ -162,7 +162,7 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 
     switch (ctx.scanner_.Next().type) {
         // The terminals
-        case Token::Int:
+        case Token::Number:
             ast = std::make_unique<ast::Terminal>(ctx.ConsumeInt());
             break;
         case Token::Pi:
@@ -282,7 +282,7 @@ Result UnaryOp::DoCompute(int indent) const {
     // Deal with unary operators.
     switch (op) {
     case detail::Operator::UMinus:
-        r *= Result("-1");
+        r *= Result(Token("-1", 10, Token::ValidFloat | Token::ValidInt));
         return r;
 
     case detail::Operator::Not:

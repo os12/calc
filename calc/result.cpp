@@ -9,33 +9,34 @@
 
 namespace parser {
 
-Result::Result(const std::string& number, int base) {
+Result::Result(const Token& t) {
     // Initialize the Big integer if we have no decimals.
-    if (number.find('.') == std::string::npos)
-        rbig = cBigNumber(number.data(), base);
+    if (t.CheckTypeFlags(Token::ValidInt))
+        rbig = cBigNumber(t.value.c_str(), t.base);
 
     // Initialize the fixed-width integers if we have a Big integer and it fits.
     size_t last;
-    if (rbig && rbig.value().length() <= 1) {
-        r64 = stoull(number, &last, base);
-        DCHECK_EQ(last, number.size());
+    if (rbig && rbig.value().length() == 1) {
+        r64 = stoull(t.value, &last, t.base);
+        DCHECK_EQ(last, t.value.size());
         DCHECK_EQ(rbig.value().toCBNL(), r64.value());
 
         try {
-            r32 = stoul(number, &last, base);
+            r32 = stoul(t.value, &last, t.base);
         }
         catch (std::exception& e) {
-            base::OutputDebugLine("Invalid 32-bit input: " + number +
+            base::OutputDebugLine("Invalid 32-bit input: " + t.value +
                                   ". Error: " + e.what());
         }
-        DCHECK_EQ(last, number.size());
+        DCHECK_EQ(last, t.value.size());
     }
 
     // Initialize the floating-point quantity from every decimal.
-    if (base == 10) {
-        double fp64 = stold(number, &last);
-        if (last == number.size())
-            rreal = fp64;
+    if (t.CheckTypeFlags(Token::ValidFloat)) {
+        DCHECK_EQ(t.base, 10);
+        double fp64 = stold(t.value, &last);
+        DCHECK(last == t.value.size());
+        rreal = fp64;
     }
 }
 
@@ -56,7 +57,8 @@ std::string Result::ToString() const {
 void Result::ApplyFunction(const std::string& fname) {
     if (fname == "abs") {
         if ((r32 && *r32 < 0) || (rreal && *rreal < 0.0))
-            *this *= Result("-1");
+            *this *= Result(
+                Token("-1", 10, Token::ValidFloat | Token::ValidInt));
         return;
     }
 

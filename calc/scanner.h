@@ -13,7 +13,7 @@ struct Token {
     // directly for scanning single-chat tokes.
     enum Type {
         // This one is variable-sized.
-        Int,
+        Number,
 
         LParen = '(',
         RParen = ')',
@@ -46,8 +46,20 @@ struct Token {
         EoF
     };
 
-    explicit Token(Type type, std::string value = "", int base = 10)
-        : type(type), value(value), base(base) {}
+    enum TypeFlags : uint32_t {
+        ValidInt = 1,
+        ValidFloat = 2
+    };
+
+    // General constructor.
+    explicit Token(Type type, std::string value = "")
+        : type(type), value(std::move(value)) {}
+
+    // Constructor for numbers.
+    Token(std::string value, int base, uint32_t type_flags)
+        : type(Number), value(std::move(value)), base(base), type_flags(type_flags) {
+        DCHECK(type_flags != 0);
+    }
 
     bool IsEoF() const { return type == EoF; }
     bool IsBinOp() const;
@@ -55,10 +67,14 @@ struct Token {
     // Returns the Operator value for the given token, given that it is a binary op.
     detail::Operator GetBinOp() const;
 
+    bool CheckTypeFlags(TypeFlags f) const {
+        return (type_flags & f) != 0;
+    }
 
     Type type;
     std::string value;
     int base = -1;
+    uint32_t type_flags = 0;
 };
 
 std::string ToString(Token::Type tt);

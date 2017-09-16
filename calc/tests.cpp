@@ -56,6 +56,7 @@ void CheckInvalid(const std::string& expr) {
 namespace tests {
 
 bool Run() {
+    // Basic numbers and expressions
     Check32("1", 1);
     Check32("1234", 1234);
     Check32("0x1234", 0x1234);
@@ -66,9 +67,28 @@ bool Run() {
     Check32("-1+1", 0);
     Check32("1+2+3+4", 10);
     Check32("10-2-3", 5);
-
     Check32("1--1", 2);
+
+    // Floating-point numbers
     CheckReal("1.0--1.0", 2.0);
+    CheckReal("1", 1.0);
+    CheckReal("1.0", 1.0);
+    CheckReal("1e1", 10.0);
+    CheckReal(".1e1", 1.0);
+    CheckReal("0.1e1", 1.0);
+    CheckReal(".1e-1", .01);
+    CheckReal("0.1e-1", .01);
+    CheckReal(".4", .4);
+
+    CheckInvalid("1e");
+    CheckInvalid("e1");
+    CheckInvalid(".1e");
+    CheckInvalid(".e");
+    CheckInvalid(".e1");
+    CheckInvalid(".e.");
+
+    // Hex numbers
+    Check32("0x1e1", 0x1e1);
 
     // spaces
     Check32(" 1 + 2 ", 3);

@@ -18,7 +18,7 @@ struct Result {
         r64 = r32;
     }
 
-    explicit Result(const std::string& number, int base = 10);
+    explicit Result(const Token& t);
 
     bool Valid() const { return r64 || r32 || rreal || rbig; }
 
