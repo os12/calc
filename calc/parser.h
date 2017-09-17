@@ -13,14 +13,14 @@ namespace parser {
 struct Result {
     explicit Result() = default;
 
-    explicit Result(uint32_t r32) : r32(r32), rbig(r32) {
-        rreal = r32;
-        r64 = r32;
+    explicit Result(uint32_t u32) : u32(u32), i32(u32), big(u32) {
+        real = u32;
+        u64 = u32;
     }
 
     explicit Result(const Token& t);
 
-    bool Valid() const { return r64 || r32 || rreal || rbig; }
+    bool Valid() const { return u64 || u32 || i32 || real || big; }
 
     // A partial string conversion for debugging.
     std::string ToString() const;
@@ -50,10 +50,11 @@ struct Result {
     // Binary function - takes the second arg.
     void ApplyFunction(const std::string& fname, const Result& arg2);
 
-    std::optional<uint32_t> r32;
-    std::optional<uint64_t> r64;
-    std::optional<double> rreal;
-    std::optional<cBigNumber> rbig;
+    std::optional<uint32_t>     u32;
+    std::optional<int32_t>      i32;
+    std::optional<uint64_t>     u64;
+    std::optional<double>       real;
+    std::optional<cBigNumber>   big;
 };
 
 inline std::ostream& operator<<(std::ostream& s, const Result& r) {

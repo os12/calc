@@ -12,34 +12,41 @@ namespace {
 void Check32(const std::string& expr, uint32_t expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.Valid());
-    CHECK(result.r32);
-    CHECK_EQ(*result.r32, expected_result);
+    CHECK(result.u32);
+    CHECK_EQ(*result.u32, expected_result);
+}
+
+void CheckSigned32(const std::string& expr, int32_t expected_result) {
+    auto result = parser::Compute(expr);
+    CHECK(result.Valid());
+    CHECK(result.i32);
+    CHECK_EQ(*result.i32, expected_result);
 }
 
 void Check64(const std::string& expr, uint64_t expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.Valid());
-    CHECK(result.r64);
-    CHECK_EQ(*result.r64, expected_result);
+    CHECK(result.u64);
+    CHECK_EQ(*result.u64, expected_result);
 }
 
 void CheckBig(const std::string& expr, const std::string& expected_result) {
     auto result = parser::Compute(expr);
-    CHECK(result.rbig);
+    CHECK(result.big);
     cBigString buf;
-    CHECK(result.rbig.value().toa(buf) == expected_result);
+    CHECK(result.big.value().toa(buf) == expected_result);
 }
 
 void CheckReal(const std::string& expr, double expected_result) {
     auto result = parser::Compute(expr);
-    CHECK(result.rreal);
-    CHECK(utils::FPEqual(*result.rreal, expected_result));
+    CHECK(result.real);
+    CHECK(utils::FPEqual(*result.real, expected_result));
 }
 
 void CheckNEReal(const std::string& expr, double expected_result) {
     auto result = parser::Compute(expr);
-    CHECK(result.rreal);
-    CHECK(!utils::FPEqual(*result.rreal, expected_result));
+    CHECK(result.real);
+    CHECK(!utils::FPEqual(*result.real, expected_result));
 }
 
 void CheckInvalid(const std::string& expr) {
@@ -87,6 +94,11 @@ bool Run() {
     CheckInvalid(".e");
     CheckInvalid(".e1");
     CheckInvalid(".e.");
+
+    // Signed math
+    CheckReal("-1/2", -0.5);
+    CheckSigned32("-1/2", 0);
+    CheckBig("-1/2", "0");
 
     // Hex numbers
     Check32("0x1e1", 0x1e1);

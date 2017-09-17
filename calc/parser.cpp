@@ -30,7 +30,7 @@ struct Context {
     Result ConsumeConstant() {
         DCHECK_EQ(scanner_.Next().type, Token::Pi);
         Result r(Token(STRINGIFY(M_PI), 10, Token::ValidFloat));
-        DCHECK(r.rreal);
+        DCHECK(r.real);
         scanner_.Pop();
         return r;
     }

@@ -24,37 +24,37 @@ std::string Parse(std::string input, T& out_controls) {
         return out_controls.find(name)->second;
     };
 
-    if (result.r32) {
+    if (result.u32) {
         get_control("signed32")
-            .control->caption(std::to_string(static_cast<int>(*result.r32)));
-        get_control("unsigned32").control->caption(std::to_string(*result.r32));
+            .control->caption(std::to_string(static_cast<int>(*result.u32)));
+        get_control("unsigned32").control->caption(std::to_string(*result.u32));
 
         char buf[64];
-        sprintf_s(buf, sizeof(buf), "%08X", *result.r32);
+        sprintf_s(buf, sizeof(buf), "%08X", *result.u32);
         get_control("hex32").control->caption(buf);
     }
 
-    if (result.r64) {
+    if (result.u64) {
         char buf[64];
         sprintf_s(buf,
                   sizeof(buf),
                   "%08I64X %08I64X",
-                  *result.r64 >> 32,
-                  *result.r64 & 0xFFFFFFFF);
+                  *result.u64 >> 32,
+                  *result.u64 & 0xFFFFFFFF);
         get_control("hex64").control->caption(buf);
     }
 
-    if (result.rreal) {
+    if (result.real) {
         char buf[1024];
-        sprintf_s(buf, sizeof(buf), "%f", *result.rreal);
+        sprintf_s(buf, sizeof(buf), "%f", *result.real);
         get_control("real").control->caption(buf);
-        sprintf_s(buf, sizeof(buf), "%e", *result.rreal);
+        sprintf_s(buf, sizeof(buf), "%e", *result.real);
         get_control("realexp").control->caption(buf);
     }
 
-    if (result.rbig) {
+    if (result.big) {
         cBigString buf;
-        get_control("big").control->caption(result.rbig.value().toa(buf));
+        get_control("big").control->caption(result.big.value().toa(buf));
     }
 
     return "OK";
