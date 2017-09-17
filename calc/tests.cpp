@@ -140,9 +140,21 @@ bool Run() {
     CheckInvalid(".0x");
     CheckInvalid(".a");
 
-    // C-style math
+    // Division by zero
+    CheckInvalid("1/0");
+    CheckInvalid("1/0.");
+    CheckInvalid("1/.0");
+    CheckInvalid("1/0e0");
+    CheckInvalid("1/.0e0");
+    CheckInvalid("1/0.0e1");
+
+    // C-style math with bitwise ops
     Check32("1<<2", 4);
     Check32("1|2", 3);
+    Check64("1<<2", 4);
+    Check64("1|2", 3);
+    CheckBig("1<<2", "4");
+    CheckBig("1|2", "3");
 
     // Big numbers
     CheckBig("100000000*10000000", "1000000000000000");

@@ -40,6 +40,8 @@ struct Result {
 
     friend bool operator==(const Result& a, const Result& b);
 
+    bool IsZero() const;
+
     //
     // Apply built-in math functions: abs, sin, exp, etc...
     //

@@ -203,6 +203,9 @@ Result& Result::operator*=(Result other) {
 }
 
 Result& Result::operator/=(Result other) {
+    if (other.IsZero())
+        throw Exception("Thou shalt not divide by zero!");
+
     APPLY_UNARY_OP(u32,  /=);
     APPLY_UNARY_OP(i32,  /=);
     APPLY_UNARY_OP(u64,  /=);
@@ -309,4 +312,11 @@ bool operator==(const Result& a, const Result& b) {
 }
 
 #undef CHECK_FIELD
+
+bool Result::IsZero() const {
+    DCHECK(Valid());
+    return (u32 && *u32 == 0) || (u64 && *u64 == 0) || (i32 && *i32 == 0) ||
+           (big && *big == 0) || (real && utils::FPEqual(*real, 0.0));
+}
+
 }  // namespace parser
