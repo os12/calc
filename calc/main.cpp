@@ -24,14 +24,15 @@ std::string Parse(std::string input, T& out_controls) {
         return out_controls.find(name)->second;
     };
 
+    if (result.i32)
+        get_control("int32").control->caption(std::to_string(*result.i32));
+
     if (result.u32) {
-        get_control("signed32")
-            .control->caption(std::to_string(static_cast<int>(*result.u32)));
-        get_control("unsigned32").control->caption(std::to_string(*result.u32));
+        get_control("uint32").control->caption(std::to_string(*result.u32));
 
         char buf[64];
         sprintf_s(buf, sizeof(buf), "%08X", *result.u32);
-        get_control("hex32").control->caption(buf);
+        get_control("uint32hex").control->caption(buf);
     }
 
     if (result.u64) {
@@ -41,7 +42,7 @@ std::string Parse(std::string input, T& out_controls) {
                   "%08I64X %08I64X",
                   *result.u64 >> 32,
                   *result.u64 & 0xFFFFFFFF);
-        get_control("hex64").control->caption(buf);
+        get_control("uint64hex").control->caption(buf);
     }
 
     if (result.real) {
@@ -66,9 +67,16 @@ struct OutControl {
     OutControl() = default;
     OutControl(const nana::form& owner,
                const nana::paint::font& font,
-               const std::string& name)
-        : label(std::make_unique<nana::label>(owner, name + ":")),
-          control(std::make_unique<nana::textbox>(owner)) {
+               std::string name)
+        : control(std::make_unique<nana::textbox>(owner)) {
+        // Deal with "hex" labels - they need a space.
+        {
+            auto idx = name.find("hex");
+            if (idx != std::string::npos)
+                name.insert(idx, 1, ' ');
+        }
+
+        label = std::make_unique<nana::label>(owner, name + ":");
         label->text_align(nana::align::right, nana::align_v::center);
 
         control->bgcolor(nana::colors::light_gray);
@@ -105,7 +113,7 @@ int __stdcall WinMain(
     nana::paint::font result_font("Verdana", 10);
 
     std::vector<std::string> names = {
-        "unsigned32", "signed32", "hex32", "hex64", "real", "realexp", "big"};
+        "uint32", "int32", "uint32hex", "uint64hex", "real", "realexp", "big"};
     std::map<std::string, OutControl> out_controls;
     for (const auto &name : names)
         out_controls[name] = OutControl(form, result_font, name);
@@ -140,11 +148,11 @@ int __stdcall WinMain(
         "<vert"
         "<input>"
         "<weight=5>"
-        "<weight=20 <unsigned32label weight=70><weight=5><unsigned32><signed32label weight=70><weight=5><signed32><weight=5>>"
+        "<weight=20 <uint32label weight=70><weight=5><uint32><int32label weight=70><weight=5><int32><weight=5>>"
         "<weight=5>"
-        "<weight=20 <hex32label weight=70><weight=5><hex32><weight=5>>"
+        "<weight=20 <uint32hexlabel weight=70><weight=5><uint32hex><weight=5>>"
         "<weight=5>"
-        "<weight=20 <hex64label weight=70><weight=5><hex64><weight=5>>"
+        "<weight=20 <uint64hexlabel weight=70><weight=5><uint64hex><weight=5>>"
         "<weight=5>"
         "<weight=20 <reallabel weight=70><weight=5><real><weight=5>>"
         "<weight=5>"
