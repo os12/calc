@@ -14,6 +14,7 @@ void Check32(const std::string& expr, uint32_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.u32);
     CHECK_EQ(*result.u32, expected_result);
+    CHECK(!result.i32 || *result.i32 == *result.big);
 }
 
 void CheckSigned32(const std::string& expr, int32_t expected_result) {
@@ -21,6 +22,7 @@ void CheckSigned32(const std::string& expr, int32_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.i32);
     CHECK_EQ(*result.i32, expected_result);
+    CHECK_EQ(*result.i32, *result.big);
 }
 
 void Check64(const std::string& expr, uint64_t expected_result) {
@@ -28,6 +30,7 @@ void Check64(const std::string& expr, uint64_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.u64);
     CHECK_EQ(*result.u64, expected_result);
+    CHECK_EQ(*result.u64, *result.big);
 }
 
 void CheckBig(const std::string& expr, const std::string& expected_result) {
@@ -41,6 +44,17 @@ void CheckReal(const std::string& expr, double expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.real);
     CHECK(utils::FPEqual(*result.real, expected_result));
+}
+
+void CheckOnlyReal(const std::string& expr, double expected_result) {
+    auto result = parser::Compute(expr);
+    CHECK(result.real);
+    CHECK(utils::FPEqual(*result.real, expected_result));
+
+    CHECK(!result.i32);
+    CHECK(!result.u32);
+    CHECK(!result.u64);
+    CHECK(!result.big);
 }
 
 void CheckNEReal(const std::string& expr, double expected_result) {
@@ -78,15 +92,16 @@ bool Run() {
     Check32("1--1", 2);
 
     // Floating-point numbers
-    CheckReal("1.0--1.0", 2.0);
+    CheckOnlyReal("1.0--1.0", 2.0);
     CheckReal("1", 1.0);
-    CheckReal("1.0", 1.0);
-    CheckReal("1e1", 10.0);
-    CheckReal(".1e1", 1.0);
-    CheckReal("0.1e1", 1.0);
-    CheckReal(".1e-1", .01);
-    CheckReal("0.1e-1", .01);
-    CheckReal(".4", .4);
+    CheckOnlyReal("1.0", 1.0);
+    CheckOnlyReal("1e1", 10.0);
+    CheckOnlyReal(".1e1", 1.0);
+    CheckOnlyReal("0.1e1", 1.0);
+    CheckOnlyReal(".1e-1", .01);
+    CheckOnlyReal("0.1e-1", .01);
+    CheckOnlyReal(".4", .4);
+    CheckOnlyReal("100/20.", 5.0);
 
     CheckInvalid("1e");
     CheckInvalid("e1");
@@ -135,11 +150,11 @@ bool Run() {
     // Functions
     Check32("abs(-1)", 1);
     Check32("abs(1)", 1);
-    CheckReal("cos(0)", 1);
-    CheckReal("cos(0.0)", 1.0);
-    CheckReal("rad(90)", double(M_PI) / 2.0);
-    CheckReal("cos(rad(90))", 0.0);
-    CheckReal("cos(rad(90))", 0);
+    CheckOnlyReal("cos(0)", 1);
+    CheckOnlyReal("cos(0.0)", 1.0);
+    CheckOnlyReal("rad(90)", double(M_PI) / 2.0);
+    CheckOnlyReal("cos(rad(90))", 0.0);
+    CheckOnlyReal("cos(rad(90))", 0);
     CheckNEReal("10000000000000000.0 + 200.0", 10000000000000000.0);
 
     // Pow. The funky op as well as a normal function.
@@ -151,9 +166,9 @@ bool Run() {
     Check32("pow(2,3)-2**3", 0);
 
     // Constants
-    CheckReal("pi", M_PI);
-    CheckReal("pi/2", M_PI_2);
-    CheckReal("deg(pi/2)", 90.0);
+    CheckOnlyReal("pi", M_PI);
+    CheckOnlyReal("pi/2", M_PI_2);
+    CheckOnlyReal("deg(pi/2)", 90.0);
 
     Check32("0xFFFFFFFF", 0xFFFFFFFF);
     Check64("0x0FFFFFFFFFFFFFFF", 0x0FFFFFFFFFFFFFFFull);

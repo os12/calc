@@ -169,137 +169,106 @@ void Result::ApplyFunction(const std::string& fname, const Result& arg2) {
     throw Exception("Unsupported binary function: " + fname);
 }
 
+#define APPLY_UNARY_OP(field, op) \
+    if (field && other.field)     \
+        *field op* other.field;   \
+    else                          \
+        field = std::nullopt
+
 Result& Result::operator+=(Result other) {
-    if (u32 && other.u32)
-        *u32 += *other.u32;
-    if (i32 && other.i32)
-        *i32 += *other.i32;
-    if (u64 && other.u64)
-        *u64 += *other.u64;
-    if (real && other.real)
-        *real += *other.real;
-    if (big && other.big)
-        *big += *other.big;
+    APPLY_UNARY_OP(u32,  +=);
+    APPLY_UNARY_OP(i32,  +=);
+    APPLY_UNARY_OP(u64,  +=);
+    APPLY_UNARY_OP(real, +=);
+    APPLY_UNARY_OP(big,  +=);
     return *this;
 }
 
 Result& Result::operator-=(Result other) {
-    if (u32 && other.u32)
-        *u32 -= *other.u32;
-    if (i32 && other.i32)
-        *i32 -= *other.i32;
-    if (u64 && other.u64)
-        *u64 -= *other.u64;
-    if (real && other.real)
-        *real -= *other.real;
-    if (big && other.big)
-        *big -= *other.big;
+    APPLY_UNARY_OP(u32,  -=);
+    APPLY_UNARY_OP(i32,  -=);
+    APPLY_UNARY_OP(u64,  -=);
+    APPLY_UNARY_OP(real, -=);
+    APPLY_UNARY_OP(big,  -=);
     return *this;
 }
 
 Result& Result::operator*=(Result other) {
-    if (u32 && other.u32)
-        *u32 *= *other.u32;
-    if (i32 && other.i32)
-        *i32 *= *other.i32;
-    if (u64 && other.u64)
-        *u64 *= *other.u64;
-    if (real && other.real)
-        *real *= *other.real;
-    if (big && other.big)
-        *big *= *other.big;
+    APPLY_UNARY_OP(u32,  *=);
+    APPLY_UNARY_OP(i32,  *=);
+    APPLY_UNARY_OP(u64,  *=);
+    APPLY_UNARY_OP(real, *=);
+    APPLY_UNARY_OP(big,  *=);
     return *this;
 }
 
 Result& Result::operator/=(Result other) {
-    if (u32 && other.u32)
-        *u32 /= *other.u32;
-    if (i32 && other.i32)
-        *i32 /= *other.i32;
-    if (u64 && other.u64)
-        *u64 /= *other.u64;
-    if (real && other.real)
-        *real /= *other.real;
-    if (big && other.big)
-        *big /= *other.big;
+    APPLY_UNARY_OP(u32,  /=);
+    APPLY_UNARY_OP(i32,  /=);
+    APPLY_UNARY_OP(u64,  /=);
+    APPLY_UNARY_OP(real, /=);
+    APPLY_UNARY_OP(big,  /=);
     return *this;
 }
 
 Result& Result::operator<<=(Result other) {
-    if (u32 && other.u32) {
-        if (*other.u32 < 32)
-            *u32 <<= *other.u32;
-        else
-            u32 = std::nullopt;
-    }
+    if (u32 && other.u32 && *other.u32 < 32)
+        *u32 <<= *other.u32;
+    else
+        u32 = std::nullopt;
     i32 = std::nullopt;
-    if (u64 && other.u64) {
-        if (*other.u64 < 64)
-            *u64 <<= *other.u64;
-        else
-            u64 = std::nullopt;
-    }
+    if (u64 && other.u64 && *other.u64 < 64)
+        *u64 <<= *other.u64;
+    else
+        u64 = std::nullopt;
     real = std::nullopt;
-    if (big && other.big)
-        *big <<= *other.big;
+    APPLY_UNARY_OP(big, <<=);
     return *this;
 }
 
 Result& Result::operator>>=(Result other) {
-    if (u32 && other.u32) {
-        if (*other.u32 < 32)
-            *u32 >>= *other.u32;
-        else
-            u32 = std::nullopt;
-    }
+    if (u32 && other.u32 && *other.u32 < 32)
+        *u32 >>= *other.u32;
+    else
+        u32 = std::nullopt;
     i32 = std::nullopt;
-    if (u64 && other.u64) {
-        if (*other.u64 < 64)
-            *u64 >>= *other.u64;
-        else
-            u64 = std::nullopt;
-    }
+    if (u64 && other.u64  && *other.u64 < 64)
+        *u64 >>= *other.u64;
+    else
+        u64 = std::nullopt;
     real = std::nullopt;
-    if (big && other.big)
-        *big >>= *other.big;
+    APPLY_UNARY_OP(big, >>=);
     return *this;
 }
 
 Result& Result::operator&=(Result other) {
-    if (u32 && other.u32)
-        *u32 &= *other.u32;
+    APPLY_UNARY_OP(u32, &=);
     i32 = std::nullopt;
-    if (u64 && other.u64)
-        *u64 &= *other.u64;
+    APPLY_UNARY_OP(u64, &=);
     real = std::nullopt;
-    if (big && other.big)
-        *big &= *other.big;
+    APPLY_UNARY_OP(big, &=);
     return *this;
 }
 
 Result& Result::operator|=(Result other) {
-    if (u32 && other.u32)
-        *u32 |= *other.u32;
+    APPLY_UNARY_OP(u32, |=);
     i32 = std::nullopt;
-    if (u64 && other.u64)
-        *u64 |= *other.u64;
+    APPLY_UNARY_OP(u64, |=);
     real = std::nullopt;
-    if (big && other.big)
-        *big |= *other.big;
+    APPLY_UNARY_OP(big, |=);
     return *this;
 }
 
 Result& Result::operator^=(Result other) {
-    if (u32 && other.u32)
-        *u32 ^= *other.u32;
+    APPLY_UNARY_OP(u32, ^=);
     i32 = std::nullopt;
-    if (u64 && other.u64)
-        *u64 ^= *other.u64;
+    APPLY_UNARY_OP(u64, ^=);
     real = std::nullopt;
-    if (big && other.big)
-        *big ^= *other.big;
+    APPLY_UNARY_OP(big, ^=);
     return *this;
 }
+
+#undef APPLY_UNARY_OP
 
 Result& Result::operator~() {
     if (u32)
