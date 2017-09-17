@@ -175,30 +175,27 @@ void Result::ApplyFunction(const std::string& fname, const Result& arg2) {
     else                          \
         field = std::nullopt
 
+#define TRIVIAL_UNARY_OP_OPERATOR_BATCH(op) \
+    do {                                    \
+        APPLY_UNARY_OP(u32, op);            \
+        APPLY_UNARY_OP(i32, op);            \
+        APPLY_UNARY_OP(u64, op);            \
+        APPLY_UNARY_OP(real, op);           \
+        APPLY_UNARY_OP(big, op);            \
+    } while (0)
+
 Result& Result::operator+=(Result other) {
-    APPLY_UNARY_OP(u32,  +=);
-    APPLY_UNARY_OP(i32,  +=);
-    APPLY_UNARY_OP(u64,  +=);
-    APPLY_UNARY_OP(real, +=);
-    APPLY_UNARY_OP(big,  +=);
+    TRIVIAL_UNARY_OP_OPERATOR_BATCH(+=);
     return *this;
 }
 
 Result& Result::operator-=(Result other) {
-    APPLY_UNARY_OP(u32,  -=);
-    APPLY_UNARY_OP(i32,  -=);
-    APPLY_UNARY_OP(u64,  -=);
-    APPLY_UNARY_OP(real, -=);
-    APPLY_UNARY_OP(big,  -=);
+    TRIVIAL_UNARY_OP_OPERATOR_BATCH(-=);
     return *this;
 }
 
 Result& Result::operator*=(Result other) {
-    APPLY_UNARY_OP(u32,  *=);
-    APPLY_UNARY_OP(i32,  *=);
-    APPLY_UNARY_OP(u64,  *=);
-    APPLY_UNARY_OP(real, *=);
-    APPLY_UNARY_OP(big,  *=);
+    TRIVIAL_UNARY_OP_OPERATOR_BATCH(*=);
     return *this;
 }
 
@@ -206,11 +203,7 @@ Result& Result::operator/=(Result other) {
     if (other.IsZero())
         throw Exception("Thou shalt not divide by zero!");
 
-    APPLY_UNARY_OP(u32,  /=);
-    APPLY_UNARY_OP(i32,  /=);
-    APPLY_UNARY_OP(u64,  /=);
-    APPLY_UNARY_OP(real, /=);
-    APPLY_UNARY_OP(big,  /=);
+    TRIVIAL_UNARY_OP_OPERATOR_BATCH(/=);
     return *this;
 }
 
