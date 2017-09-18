@@ -20,19 +20,29 @@ std::string Parse(std::string input, T& out_controls) {
     for (auto& entry : out_controls)
         entry.second.control->caption("");
 
-    auto get_control = [&out_controls](const char* name) -> OutControl& {
-        return out_controls.find(name)->second;
+    auto get_control = [&out_controls](const char* name) -> nana::widget& {
+        return *out_controls.find(name)->second.control;
     };
 
     if (result.i32)
-        get_control("int32").control->caption(std::to_string(*result.i32));
+        get_control("int32").caption(std::to_string(*result.i32));
 
     if (result.u32) {
-        get_control("uint32").control->caption(std::to_string(*result.u32));
+        get_control("uint32").caption(std::to_string(*result.u32));
 
         char buf[64];
         sprintf_s(buf, sizeof(buf), "%08X", *result.u32);
-        get_control("uint32hex").control->caption(buf);
+        get_control("uint32hex").caption(buf);
+
+        std::string bin;
+        for (int bit = 31; bit >= 0; --bit) {
+            bin += (*result.u32 & (1 << bit)) != 0 ? '1' : '0';
+            if (bit % 4 == 0)
+                bin += ' ';
+            if (bit == 16)
+                bin += "   ";
+        }
+        get_control("uint32bin").caption(bin);
     }
 
     if (result.u64) {
@@ -42,20 +52,20 @@ std::string Parse(std::string input, T& out_controls) {
                   "%08I64X %08I64X",
                   *result.u64 >> 32,
                   *result.u64 & 0xFFFFFFFF);
-        get_control("uint64hex").control->caption(buf);
+        get_control("uint64hex").caption(buf);
     }
 
     if (result.real) {
         char buf[1024];
         sprintf_s(buf, sizeof(buf), "%f", *result.real);
-        get_control("real").control->caption(buf);
+        get_control("real").caption(buf);
         sprintf_s(buf, sizeof(buf), "%e", *result.real);
-        get_control("realexp").control->caption(buf);
+        get_control("realexp").caption(buf);
     }
 
     if (result.big) {
         cBigString buf;
-        get_control("big").control->caption(result.big.value().toa(buf));
+        get_control("big").caption(result.big.value().toa(buf));
     }
 
     return "OK";
@@ -65,10 +75,9 @@ std::string Parse(std::string input, T& out_controls) {
 
 struct OutControl {
     OutControl() = default;
-    OutControl(const nana::form& owner,
-               const nana::paint::font& font,
-               std::string name)
-        : control(std::make_unique<nana::textbox>(owner)) {
+
+    // This constructor creates a label and a text box.
+    OutControl(const nana::form& owner, const nana::paint::font& font, std::string name) {
         // Deal with "hex" labels - they need a space.
         {
             auto idx = name.find("hex");
@@ -79,16 +88,35 @@ struct OutControl {
         label = std::make_unique<nana::label>(owner, name + ":");
         label->text_align(nana::align::right, nana::align_v::center);
 
-        control->bgcolor(nana::colors::light_gray);
-        control->typeface(font);
-        control->line_wrapped(true);
-        control->editable(false);
-        control->enable_caret();
-        nana::API::eat_tabstop(*control, false);
+        auto text_control = std::make_unique<nana::textbox>(owner);
+        text_control->bgcolor(nana::colors::light_gray);
+        text_control->typeface(font);
+        text_control->line_wrapped(true);
+        text_control->editable(false);
+        text_control->enable_caret();
+        nana::API::eat_tabstop(*text_control, false);
+
+        control = std::move(text_control);
     }
 
-    std::unique_ptr<nana::label> label;
-    std::unique_ptr<nana::textbox> control;
+    // This constructor creates a label and takes the control from the caller.
+    OutControl(const nana::form& owner,
+               std::string name,
+               std::unique_ptr<nana::widget> control)
+        : control(std::move(control)) {
+        // Deal with "bin" labels - they need a space.
+        {
+            auto idx = name.find("bin");
+            if (idx != std::string::npos)
+                name.insert(idx, 1, ' ');
+        }
+
+        label = std::make_unique<nana::label>(owner, name + ":");
+        label->text_align(nana::align::right, nana::align_v::center);
+    }
+
+    std::unique_ptr<nana::label>    label;
+    std::unique_ptr<nana::widget>   control;
 };
 
 int __stdcall WinMain(
@@ -112,11 +140,21 @@ int __stdcall WinMain(
 
     nana::paint::font result_font("Verdana", 10);
 
+    // Create the bulk of the output controls.
     std::vector<std::string> names = {
         "uint32", "int32", "uint32hex", "uint64hex", "real", "realexp", "big"};
     std::map<std::string, OutControl> out_controls;
     for (const auto &name : names)
         out_controls[name] = OutControl(form, result_font, name);
+
+    // Create the binary output in a different way - it uses two labels.
+    {
+        auto bin_output = std::make_unique<nana::label>(form);
+        bin_output->typeface(result_font);
+        bin_output->text_align(nana::align::left, nana::align_v::center);
+
+        out_controls["uint32bin"] = OutControl(form, "uint32bin", std::move(bin_output));
+    }
 
     nana::label statusbar{form};
     statusbar.format(true);
@@ -148,6 +186,8 @@ int __stdcall WinMain(
         "<vert"
         "<input>"
         "<weight=5>"
+        "<weight=15 <uint32binlabel weight=70><weight=5><uint32bin>>"
+        "<weight=5>"
         "<weight=20 <uint32label weight=70><weight=5><uint32><int32label weight=70><weight=5><int32><weight=5>>"
         "<weight=5>"
         "<weight=20 <uint32hexlabel weight=70><weight=5><uint32hex><weight=5>>"
@@ -173,8 +213,8 @@ int __stdcall WinMain(
     layout.collocate();
 
     form.caption("Calc!");
-    form.size({400, 200});
-    nana::API::track_window_size(form, {400, 200}, false);
+    form.size({400, 220});
+    nana::API::track_window_size(form, form.size(), false);
     form.icon(nana::paint::image(exe_path));
     form.show();
 
