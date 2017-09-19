@@ -35,6 +35,7 @@ struct Result {
     Result& operator|=(Result b);
     Result& operator&=(Result b);
     Result& operator^=(Result b);
+    Result& operator%=(Result b);
 
     Result& operator~();
 

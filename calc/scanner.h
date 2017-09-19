@@ -23,6 +23,7 @@ struct Token {
         Plus = '+',
         Mult = '*',
         Div = '/',
+        Rem = '%',
 
         Coma = ',',
 
@@ -106,6 +107,7 @@ enum class Operator {
 
     Mult    = 7 * OpMultiplier,
     Div     = 7 * OpMultiplier + 1,
+    Rem     = 7 * OpMultiplier + 2,
 
     Pow     = 8 * OpMultiplier,             // the highest binary op
 

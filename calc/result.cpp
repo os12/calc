@@ -199,6 +199,18 @@ Result& Result::operator*=(Result other) {
     return *this;
 }
 
+Result& Result::operator%=(Result other) {
+    APPLY_UNARY_OP(u32, %=);
+    APPLY_UNARY_OP(i32, %=);
+    APPLY_UNARY_OP(u64, %=);
+    APPLY_UNARY_OP(big, %=);
+    if (real && other.real)
+        real = fmod(*real, *other.real);
+    else
+        real = std::nullopt;
+    return *this;
+}
+
 Result& Result::operator/=(Result other) {
     if (other.IsZero())
         throw Exception("Thou shalt not divide by zero!");

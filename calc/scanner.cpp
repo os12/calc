@@ -14,6 +14,7 @@ const std::map<Token::Type, Operator> _known_bin_ops = {{Token::Minus, Operator:
                                                         {Token::Plus, Operator::Plus},
                                                         {Token::Mult, Operator::Mult},
                                                         {Token::Div, Operator::Div},
+                                                        {Token::Rem, Operator::Rem},
                                                         {Token::LShift, Operator::LShift},
                                                         {Token::RShift, Operator::RShift},
                                                         {Token::And, Operator::And},
@@ -129,6 +130,7 @@ std::string ToString(Token::Type tt) {
     CASE(Function);
     CASE(Pi);
     CASE(Coma);
+    CASE(Rem);
     CASE(EoF);
     };
 
@@ -148,6 +150,7 @@ std::string ToString(Operator op) {
     CASE(Plus);
     CASE(Mult);
     CASE(Div);
+    CASE(Rem);
     CASE(Or);
     CASE(And);
     CASE(Xor);
@@ -230,17 +233,17 @@ bool Buffer::FetchQueued(bool eof, Token* t) {
     case '&':
     case '^':
     case ',':
+    case '%':
         // Take a single-character token.
         *t = Token{Token::Type(buf_.front()), std::string(1, buf_.front())};
         buf_.erase(buf_.begin(), buf_.begin() + 1);
         return true;
 
-    // Deal with Mult/Exp as they start with '*'.
-    case '*':
 
     // Start a two-character token: <<, >>
     case '<':
     case '>':
+    case '*': // Deal with Mult/Exp as they start with '*'.
         state_ = State::TwoChar;
         return false;
 

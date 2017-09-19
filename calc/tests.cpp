@@ -90,6 +90,8 @@ bool Run() {
     Check32("1+2+3+4", 10);
     Check32("10-2-3", 5);
     Check32("1--1", 2);
+    Check32("10%4", 2);
+    CheckReal("10.0%4.0", 2.0);
 
     // Floating-point numbers
     CheckOnlyReal("1.0--1.0", 2.0);

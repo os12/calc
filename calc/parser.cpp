@@ -89,7 +89,8 @@ std::unique_ptr<ast::Node> Input(Context<I>& ctx) {
 
 // Grammar:
 //  <expression>    ::= <term> [ <binop> <term> ]
-//  <binop>         ::= MINUS | PLUS | MULT | DIV | LSHIFT | RSHIFT | POW | AND | OR | XOR
+//  <binop>         ::= MINUS | PLUS | MULT | DIV | REM | LSHIFT | RSHIFT |
+//                      POW | AND | OR | XOR
 template <typename I>
 std::unique_ptr<ast::Node> Expression(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
@@ -250,6 +251,9 @@ Result BinaryOp::DoCompute(int indent) const {
         break;
     case detail::Operator::Div:
         lresult /= rresult;
+        break;
+    case detail::Operator::Rem:
+        lresult %= rresult;
         break;
     case detail::Operator::LShift:
         lresult <<= rresult;
