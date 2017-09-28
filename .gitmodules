@@ -6,3 +6,6 @@
 	path = glog
 	url = git@github.com:os12/glog.git
 	branch = integration
+[submodule "fmt"]
+	path = fmt
+	url = git@github.com:os12/fmt.git
