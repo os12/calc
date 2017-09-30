@@ -226,7 +226,8 @@ private:
 
         // Deal with unfinished var-sized tokens.
         if (!buf_.Empty())
-            throw Exception("Unrecognized ASCII string: '" + buf_.AsString() + "'");
+            throw Exception("Unrecognized character sequence starting with: '" +
+                            buf_.AsString() + "'");
         return t;
     }
 

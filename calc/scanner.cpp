@@ -281,11 +281,12 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
             return true;
         }
 
-        // Now this bit is weird. We are in the "var sized token" mode and must stay
-        // there until we know for sure that this ASCII string is garbage.
+        // Now this bit is a little weird: we are in the "var sized token" mode and must
+        // stay there until we know for sure that this ASCII string is not a built-in
+        // function or constant.
         if (isalpha(buf_.front())) {
             if (buf_.size() >= 4)
-                throw Exception("Unrecognized ASCII string starting with '" +
+                throw Exception("Unrecognized character sequence starting with: '" +
                                 AsString().substr(0, 4) + "'");
             return false;
         }
@@ -325,14 +326,10 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
             }
             break;
         }
-
-        // This improves error messanging for cases like "10foobar".
-        if (isalpha(*it))
-            throw Exception("Malformed base/" + std::to_string(base) +
-                            " integer starting with: '" + number + *it + "'");
         break;
     }
 
+	// Deal with cases where we started scanning a number but found no valid chars.
     if (number.empty() || number == ".") {
         if (it != buf_.end())
             throw Exception("Malformed base/" + std::to_string(base) +
@@ -341,6 +338,7 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         return false;
     }
 
+	// Deal with hex chars as we can produce a better message.
     if (base == 10) {
         if (ContainsHexChars(number) && !IsValidFloat(number))
             throw Exception("Malformed base/10 integer: " + number);
@@ -348,7 +346,7 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
             throw Exception("Malformed floating-poing number: " + number);
     }
 
-    // Deal with incomplete floating-poing numbers.
+    // Deal with incomplete floating-point numbers.
     if (IsE(number.back()) || number.back() == '-')
         return false;
 
