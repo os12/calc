@@ -76,13 +76,13 @@ auto MakeContext(Scanner<I> scanner) {
 template <typename I>
 std::unique_ptr<ast::Node> Input(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
-        throw Exception("Abrupt end of input while parsing the 'input'.");
+        throw Exception("Abrupt end of input while parsing the 'input' rule.");
 
     auto ast = Expression(ctx);
 
     if (!ctx.scanner_.ReachedEof())
-        throw Exception("Unexpected token after parsing an 'expression': " +
-                        ToString(ctx.scanner_.Next().type));
+        throw Exception("Unexpected token while parsing the 'input' rule: '" +
+                        ctx.scanner_.Next().ToString() + "'");
 
     return ast;
 }
@@ -94,7 +94,7 @@ std::unique_ptr<ast::Node> Input(Context<I>& ctx) {
 template <typename I>
 std::unique_ptr<ast::Node> Expression(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
-        throw Exception("Abrupt end of input while parsing an 'expression'.");
+        throw Exception("Abrupt end of input while parsing an 'expression' rule.");
 
     return ExpressionHelper(ctx, Term(ctx), 0);
 }
@@ -132,7 +132,7 @@ std::unique_ptr<ast::Node> ExpressionHelper(Context<I>& ctx,
 template <typename I>
 std::list<std::unique_ptr<ast::Node>> Args(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
-        throw Exception("Abrupt end of input while parsing 'args'.");
+        throw Exception("Abrupt end of input while parsing the 'args' rule.");
 
     std::list<std::unique_ptr<ast::Node>> rv;
     rv.emplace_back(Expression(ctx));
@@ -157,7 +157,7 @@ std::list<std::unique_ptr<ast::Node>> Args(Context<I>& ctx) {
 template <typename I>
 std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
     if (ctx.scanner_.ReachedEof())
-        throw Exception("Abrupt end of input while parsing a 'term'.");
+        throw Exception("Abrupt end of input while parsing the 'term' rule.");
 
     std::unique_ptr<ast::Node> ast;
 
@@ -186,8 +186,8 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
             if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing RParen");
             if (ctx.scanner_.Next().type != Token::RParen)
-                throw Exception("Unxpected token while expecting RParen: " +
-                                ToString(ctx.scanner_.Next().type));
+                throw Exception("Unxpected token while expecting RParen: '" +
+                                ctx.scanner_.Next().ToString() + "'");
             ctx.scanner_.Pop();
             break;
 
@@ -198,22 +198,22 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
             if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing LParen");
             if (ctx.scanner_.Next().type != Token::LParen)
-                throw Exception("Unxpected token while expecting LParen: " +
-                                ToString(ctx.scanner_.Next().type));
+                throw Exception("Unxpected token while expecting LParen: '" +
+                                ctx.scanner_.Next().ToString() + "'");
             ctx.scanner_.Pop();
             ast = std::make_unique<ast::Function>(func, Args(ctx));
             if (ctx.scanner_.ReachedEof())
                 throw Exception("Missing RParen");
             if (ctx.scanner_.Next().type != Token::RParen)
-                throw Exception("Unxpected token while expecting RParen: " +
-                                ToString(ctx.scanner_.Next().type));
+                throw Exception("Unxpected token while expecting RParen: '" +
+                                ctx.scanner_.Next().ToString() + "'");
             ctx.scanner_.Pop();
             break;
         }
 
         default:
-            throw Exception("Failed to parse a 'term': unexpected token: " +
-                            ToString(ctx.scanner_.Next().type));
+            throw Exception("Failed to parse the 'term' rule. Unexpected token: '" +
+                            ctx.scanner_.Next().ToString() + "'");
     }
 
     DCHECK(ast);

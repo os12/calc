@@ -109,6 +109,38 @@ detail::Operator Token::GetBinOp() const {
     return detail::_known_bin_ops.find(type)->second;
 }
 
+std::string Token::ToString() const {
+	switch (type)
+	{
+	case Token::Number:
+		DCHECK(!value.empty());
+		return "Number: " + value;
+	case Token::Function:
+		DCHECK(!value.empty());
+		return "Function: " + value;
+	case Token::LParen:
+	case Token::RParen:
+	case Token::Minus:
+	case Token::Plus:
+	case Token::Mult:
+	case Token::Div:
+	case Token::Rem:
+	case Token::Coma:
+	case Token::Not:
+	case Token::Or:
+	case Token::And:
+	case Token::Xor:
+	case Token::LShift:
+	case Token::RShift:
+	case Token::Pow:
+	case Token::Pi:
+	case Token::EoF:
+		return parser::ToString(type);
+	default:
+		LOG(FATAL) << "Invalid token type: " << static_cast<int>(type);
+	}
+}
+
 #define CASE(v) case Token::v: return #v
 
 std::string ToString(Token::Type tt) {

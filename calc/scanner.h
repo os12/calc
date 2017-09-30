@@ -72,6 +72,8 @@ struct Token {
         return (type_flags & f) != 0;
     }
 
+	std::string ToString() const;
+
     Type type;
     std::string value;
     int base = -1;
@@ -197,7 +199,8 @@ public:
         if (idx >= queue_.size()) {
             DCHECK(!queue_.empty() && queue_.back().IsEoF());
             throw Exception("Reached end of input while trying to fetch token idx=" +
-                            std::to_string(idx) + " at " + ToString(queue_.front().type));
+                            std::to_string(idx) + ". Front: '" +
+                            queue_.front().ToString() + "'");
         }
 
         return queue_[idx];
