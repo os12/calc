@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "parser.h"
 #include "utils.h"
 
@@ -126,7 +126,7 @@ bool Run() {
     Check32("12    ", 12);
     Check32("12\t", 12);
 
-    // ill-formed expressions
+    // Ill-formed expressions
     CheckInvalid("12(");
     CheckInvalid("12+");
     CheckInvalid("+");
@@ -134,7 +134,10 @@ bool Run() {
     CheckInvalid("(12");
     CheckInvalid(")12");
 
-    // ill-formed numbers
+    // Invalid intermediate results
+    CheckInvalid("3%(.3^2.)");
+
+    // Ill-formed numbers
     CheckInvalid(".");
     CheckInvalid("0x");
     CheckInvalid("0x.");
@@ -149,6 +152,7 @@ bool Run() {
     CheckInvalid("1/0e0");
     CheckInvalid("1/.0e0");
     CheckInvalid("1/0.0e1");
+    CheckInvalid("0**-1");
 
     // C-style math with bitwise ops
     Check32("1<<2", 4);
@@ -223,6 +227,33 @@ bool Run() {
     }
 #endif
 
+#if 0
+    {
+        auto fuzz = [](uint64_t max_length, std::string& input) {
+            if (input.size() > max_length)
+                return;
+
+            static const std::vector<char> alphabet = {
+                '0', '1', '2', '3', '.', 'e', 'f', 'g', '!', '(', ')',
+                '%', '^', '*', '-', '+', '&', '<', '>', 'a', 'x', -20};
+            while (true) {
+                input.clear();
+                while (input.size() < max_length) {
+                    input.append(1, alphabet.at(rand() % alphabet.size()));
+                    try {
+                        parser::Compute(input);
+                        LOG(INFO) << "Valid expression: " << input;
+                    } catch (std::exception&) {
+                    }
+                }
+            }
+        };
+
+        srand(static_cast<unsigned int>(time(nullptr)));
+        std::string input;
+        fuzz(10, input);
+    }
+#endif
     return true;
 }
 

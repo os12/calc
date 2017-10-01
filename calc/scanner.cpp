@@ -289,6 +289,12 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
     DCHECK(state_ == State::VarSized);
     DCHECK(!buf_.empty());
 
+    // The "char" is signed and there is a funky promotion that happens when calling
+    // isalpha() as it takes an "int". So, discard nagative values right here.
+    for (char c : buf_)
+        if (c < 0)
+            throw Exception("Invalid character: " + std::to_string(buf_.front()));
+
     // First deal the known functions and constants. The thing here is that we must deal
     // with ASCII strings.
     {

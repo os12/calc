@@ -152,6 +152,9 @@ void Result::ApplyFunction(const std::string& fname) {
 }
 
 void Result::ApplyFunction(const std::string& fname, const Result& arg2) {
+    if (IsZero() && arg2.IsNegative())
+        throw Exception("Thou shalt not divide by zero!");
+
     if (fname == "pow") {
         if (big && arg2.big)
             big->pow(*arg2.big);
@@ -200,6 +203,9 @@ Result& Result::operator*=(Result other) {
 }
 
 Result& Result::operator%=(Result other) {
+    if (other.IsZero())
+        throw Exception("Thou shalt not divide by zero!");
+
     APPLY_UNARY_OP(u32, %=);
     APPLY_UNARY_OP(i32, %=);
     APPLY_UNARY_OP(u64, %=);
@@ -322,6 +328,12 @@ bool Result::IsZero() const {
     DCHECK(Valid());
     return (u32 && *u32 == 0) || (u64 && *u64 == 0) || (i32 && *i32 == 0) ||
            (big && *big == 0) || (real && utils::FPEqual(*real, 0.0));
+}
+
+bool Result::IsNegative() const {
+    DCHECK(Valid());
+    return (i32 && *i32 < 0) ||
+        (big && *big < 0) || (real && *real < 0.0);
 }
 
 }  // namespace parser

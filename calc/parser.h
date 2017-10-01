@@ -42,6 +42,8 @@ struct Result {
     friend bool operator==(const Result& a, const Result& b);
 
     bool IsZero() const;
+    bool IsNegative() const;
+    bool IsPositive() const { return !(IsZero() || IsNegative()); }
 
     //
     // Apply built-in math functions: abs, sin, exp, etc...

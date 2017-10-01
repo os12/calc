@@ -233,4 +233,6 @@ int __stdcall WinMain(
     nana::exec();
 
     google::ShutdownGoogleLogging();
+    return 0;
 }
+

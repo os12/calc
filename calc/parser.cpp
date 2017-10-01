@@ -275,8 +275,11 @@ Result BinaryOp::DoCompute(int indent) const {
         lresult.ApplyFunction("pow", rresult);
         break;
     default:
-        throw Exception("Unexpected binary op: " + ToString(op));
+        throw Exception("Unexpected binary op: " + std::to_string(static_cast<int>(op)));
     }
+
+    if (!lresult.Valid())
+        throw Exception("Binary operator " + ToString(op) + " yields no result");
     return lresult;
 }
 
