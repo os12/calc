@@ -168,13 +168,23 @@ int __stdcall WinMain(
         for (auto& entry : out_controls)
             entry.second.control->caption("");
 
+        auto postprocess = [](const std::string& msg) {
+            std::string rv;
+            for (char c : msg) {
+                if (c == '<')
+                    rv += "\\";
+                rv += c;
+            }
+            return rv;
+        };
+
         try {
             auto msg = Parse(arg.widget.caption(), out_controls);
             statusbar.caption(msg);
         } catch (std::exception &e) {
             utils::OutputDebugLine(e.what());
-            statusbar.caption(std::string("<color=0xff0000 size=10>") + e.what() +
-                              "</>");
+            statusbar.caption(std::string("<color=0xff0000 size=10>") +
+                              postprocess(e.what()) + "</>");
         }
     });
 
