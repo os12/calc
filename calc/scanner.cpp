@@ -395,12 +395,15 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         case 10:
             // Every base/10 integer is a valid float, yet floating-point numbers
             // are not integers.
-            type_flags |= Token::ValidFloat;
+            type_flags = Token::ValidFloat;
             if (!IsValidFloat(number))
                 type_flags |= Token::ValidInt;
             break;
         case 16:
-            type_flags |= Token::ValidInt;
+            // Right now only base/16 integers are supported and every one of them
+            // is also a valid float. Well, subject to conversion rules.
+            type_flags = Token::ValidInt | Token::ValidFloat;
+            break;
         }
         *t = Token{number, base, type_flags};
         DCHECK(Result(*t).Valid());

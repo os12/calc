@@ -16,7 +16,7 @@ Result::Result(const Token& t) {
 
     // Initialize the fixed-width integers if we have a Big integer and it fits.
     size_t last;
-    if (big && big.value().length() == 1) {
+    if (big && big.value().bits() <= 64) {
         u64 = stoull(t.value, &last, t.base);
         DCHECK_EQ(last, t.value.size());
         DCHECK_EQ(big.value().toCBNL(), u64.value());
@@ -41,14 +41,25 @@ Result::Result(const Token& t) {
 
     // Initialize the floating-point quantity from every decimal.
     if (t.CheckTypeFlags(Token::ValidFloat)) {
-        DCHECK_EQ(t.base, 10);
-        double fp64 = stold(t.value, &last);
+        switch (t.base) {
+        case 10:
+            real = stold(t.value, &last);
 
-        // The scanner is quite careful not not let these through.
-        DCHECK(last == t.value.size());
-        if (last != t.value.size())
-            throw Exception("Malformed floating-point number: " + t.value);
-        real = fp64;
+            // The scanner is quite careful not not let these through.
+            DCHECK(last == t.value.size());
+            if (last != t.value.size())
+                throw Exception("Malformed floating-point number: " + t.value);
+            break;
+
+        case 16:
+            // Only base/16 integers are supported right now. Just take the u64 quantity
+            // and, thus, exclude big numbers (as the huge numbers cannot be represented
+            // with full precision anyway).
+            DCHECK(t.CheckTypeFlags(Token::ValidInt));
+            if (u64)
+                real = static_cast<double>(*u64);
+            break;
+        }
     }
 }
 

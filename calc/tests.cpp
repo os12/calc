@@ -30,14 +30,14 @@ void Check64(const std::string& expr, uint64_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.u64);
     CHECK_EQ(*result.u64, expected_result);
-    CHECK_EQ(*result.u64, *result.big);
+    CHECK_EQ(*result.u64, result.big->toCBNL());
 }
 
 void CheckBig(const std::string& expr, const std::string& expected_result) {
     auto result = parser::Compute(expr);
     CHECK(result.big);
     cBigString buf;
-    CHECK(result.big.value().toa(buf) == expected_result);
+    CHECK_EQ(result.big.value().toa(buf), expected_result);
 }
 
 void CheckReal(const std::string& expr, double expected_result) {
@@ -104,6 +104,7 @@ bool Run() {
     CheckOnlyReal("0.1e-1", .01);
     CheckOnlyReal(".4", .4);
     CheckOnlyReal("100/20.", 5.0);
+    CheckReal("0x10000000/1024", 262144.0);
 
     CheckInvalid("1e");
     CheckInvalid("e1");
@@ -119,6 +120,7 @@ bool Run() {
 
     // Hex numbers
     Check32("0x1e1", 0x1e1);
+    CheckReal("0x10000000/1024", 262144);
 
     // spaces
     Check32(" 1 + 2 ", 3);
@@ -159,8 +161,11 @@ bool Run() {
     Check32("1|2", 3);
     Check64("1<<2", 4);
     Check64("1|2", 3);
+    Check64("0xffffffffffffff00", 0xffffffffffffff00ull);
     CheckBig("1<<2", "4");
     CheckBig("1|2", "3");
+    Check64("0x10000000>>10", 262144);
+    CheckBig("0xffffffffffffff00 + 1", "18446744073709551361");
 
     // Big numbers
     CheckBig("100000000*10000000", "1000000000000000");
