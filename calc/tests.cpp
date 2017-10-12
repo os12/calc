@@ -30,7 +30,7 @@ void Check64(const std::string& expr, uint64_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.u64);
     CHECK_EQ(*result.u64, expected_result);
-    CHECK_EQ(*result.u64, result.big->toCBNL());
+    CHECK_EQ(*result.u64, result.big->loword());
 }
 
 void CheckBig(const std::string& expr, const std::string& expected_result) {

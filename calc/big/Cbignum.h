@@ -1209,7 +1209,7 @@ inline cBigNumber& cBigNumber::setdivmodtab (cBigNumber& a,
 
 inline  CBNL    cBigNumber::toCBNL()  const
 {
-  if (bits() > CHAR_BIT * sizeof (CBNL)) erange();
+  if (bits() >= CHAR_BIT * sizeof (CBNL)) erange();
   return (loword());
 }
 

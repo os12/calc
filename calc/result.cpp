@@ -19,7 +19,7 @@ Result::Result(const Token& t) {
     if (big && big.value().bits() <= 64) {
         u64 = stoull(t.value, &last, t.base);
         DCHECK_EQ(last, t.value.size());
-        DCHECK_EQ(big.value().toCBNL(), u64.value());
+        DCHECK_EQ(big.value().loword(), u64.value());
 
         try {
             u32 = stoul(t.value, &last, t.base);
