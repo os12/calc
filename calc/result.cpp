@@ -30,12 +30,16 @@ Result::Result(const Token& t) {
         }
         DCHECK_EQ(last, t.value.size());
 
-        try {
-            i32 = stol(t.value, &last, t.base);
-        }
-        catch (std::exception& e) {
-            utils::OutputDebugLine("Invalid signed 32-bit input: " + t.value +
-                                   ". Error: " + e.what());
+        // Deal with 32-bit hex numbers as they can be interpreted as int32.
+        if (u32 && t.base == 16)
+            i32 = static_cast<int32_t>(*u32);
+        else {
+            try {
+                i32 = stol(t.value, &last, t.base);
+            } catch (std::exception& e) {
+                utils::OutputDebugLine("Invalid signed 32-bit input: " + t.value +
+                                       ". Error: " + e.what());
+            }
         }
     }
 

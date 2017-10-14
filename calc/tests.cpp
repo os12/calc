@@ -14,7 +14,6 @@ void Check32(const std::string& expr, uint32_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.u32);
     CHECK_EQ(*result.u32, expected_result);
-    CHECK(!result.i32 || *result.i32 == *result.big);
 }
 
 void CheckSigned32(const std::string& expr, int32_t expected_result) {
@@ -22,7 +21,6 @@ void CheckSigned32(const std::string& expr, int32_t expected_result) {
     CHECK(result.Valid());
     CHECK(result.i32);
     CHECK_EQ(*result.i32, expected_result);
-    CHECK_EQ(*result.i32, *result.big);
 }
 
 void Check64(const std::string& expr, uint64_t expected_result) {
@@ -117,6 +115,10 @@ bool Run() {
     CheckReal("-1/2", -0.5);
     CheckSigned32("-1/2", 0);
     CheckBig("-1/2", "0");
+    CheckSigned32("0xFFFFFFFF", -1);
+    CheckSigned32("0xF0000000", -268435456);
+    CheckSigned32("-16*(16**6)", -268435456);
+    CheckBig("-16*(16**6)", "-268435456");
 
     // Hex numbers
     Check32("0x1e1", 0x1e1);
