@@ -153,7 +153,7 @@ int __stdcall WinMain(
         bin_output->typeface(result_font);
         bin_output->text_align(nana::align::left, nana::align_v::center);
 
-        out_controls["uint32bin"] = OutControl(form, "uint32bin", std::move(bin_output));
+        out_controls["uint32bin"] = OutControl(form, "32-bit bin", std::move(bin_output));
     }
 
     nana::label statusbar{form};
