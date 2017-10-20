@@ -78,10 +78,10 @@ struct Node {
     virtual ~Node() = default;
 
     // Returns the result of computation performed on the entire AST.
-    Result Compute(int indent) const;
+    Result Compute(std::vector<int>& indent_stack, int indent) const;
 
 protected:
-    virtual Result DoCompute(int indent) const = 0;
+    virtual Result DoCompute(std::vector<int>& indent_stack, int indent) const = 0;
     virtual std::string Print() const = 0;
 };
 
@@ -92,7 +92,7 @@ struct Terminal : Node {
     const Result value;
 
 protected:
-    Result DoCompute(int indent) const override;
+    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
     std::string Print() const override { return "Terminal: " + value.ToString(); };
 };
 
@@ -107,7 +107,7 @@ struct BinaryOp : Node {
     const std::unique_ptr<Node> left_ast, right_ast;
 
 protected:
-    Result DoCompute(int indent) const override;
+    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
     std::string Print() const override { return "BinaryOp: " + ToString(op); };
 };
 
@@ -120,7 +120,7 @@ struct UnaryOp : Node {
     const std::unique_ptr<Node> arg_ast;
 
 protected:
-    Result DoCompute(int indent) const override;
+    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
     std::string Print() const override { return "UnaryOp: " + ToString(op); };
 };
 
@@ -133,7 +133,7 @@ struct Function : Node {
     const std::list<std::unique_ptr<Node>> args;
 
 protected:
-    Result DoCompute(int indent) const override;
+    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
     std::string Print() const override { return "Function: " + token.value; };
 };
 
@@ -158,7 +158,9 @@ inline Result Compute(const std::string& input) {
         return Result();
 
     utils::OutputDebugLine("Walking AST for exression: " + input);
-    return ast->Compute(0);
+
+    std::vector<int> indent_stack;
+    return ast->Compute(indent_stack, 0);
 }
 
 }  // namespace parser

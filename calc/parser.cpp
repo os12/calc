@@ -224,19 +224,40 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 
 namespace ast {
 
-Result Node::Compute(int indent) const {
-    utils::OutputDebugLine(std::string(indent, '\t') + Print());
-    return DoCompute(indent);
+Result Node::Compute(std::vector<int>& indent_stack, int indent) const {
+    std::string line;
+
+    auto istack = indent_stack.begin();
+    for (int i = 0; i < indent; ++i) {
+        if (i == indent - 1) {
+            line += " +--";
+            break;
+        }
+        if (istack != indent_stack.end() && *istack == i) {
+            line += " |  ";
+            ++istack;
+        }
+        else
+            line += "    ";
+    }
+
+    utils::OutputDebugLine(line + Print());
+    return DoCompute(indent_stack, indent);
 }
 
-Result Terminal::DoCompute(int indent) const {
+Result Terminal::DoCompute(std::vector<int>& indent_stack, int indent) const {
     DCHECK(value.Valid());
     return value;
 }
 
-Result BinaryOp::DoCompute(int indent) const {
-    auto lresult = left_ast->Compute(indent + 1);
-    auto rresult = right_ast->Compute(indent + 1);
+Result BinaryOp::DoCompute(std::vector<int>& indent_stack, int indent) const {
+    indent_stack.push_back(indent);
+    auto lresult = left_ast->Compute(indent_stack, indent + 1);
+
+    DCHECK(!indent_stack.empty());
+    DCHECK_EQ(indent_stack.back(), indent);
+    indent_stack.pop_back();
+    auto rresult = right_ast->Compute(indent_stack, indent + 1);
 
     // Deal with binary ops.
     switch (op) {
@@ -280,41 +301,62 @@ Result BinaryOp::DoCompute(int indent) const {
 
     if (!lresult.Valid())
         throw Exception("Binary operator " + ToString(op) + " yields no result");
+
     return lresult;
 }
 
-Result UnaryOp::DoCompute(int indent) const {
-    auto r = arg_ast->Compute(indent + 1);
+Result UnaryOp::DoCompute(std::vector<int>& indent_stack, int indent) const {
+    indent_stack.push_back(indent);
+
+    auto r = arg_ast->Compute(indent_stack, indent + 1);
 
     // Deal with unary operators.
     switch (op) {
     case detail::Operator::UMinus:
         r *= Result(Token("-1", 10, Token::ValidFloat | Token::ValidInt));
-        return r;
+        break;
 
     case detail::Operator::Not:
         r.operator~();
-        return r;
+        break;
+
+    default:
+        throw Exception("Unexpected unary op: " + ToString(op));
     }
-    throw Exception("Unexpected unary op: " + ToString(op));
+
+    DCHECK(!indent_stack.empty());
+    DCHECK_EQ(indent_stack.back(), indent);
+    indent_stack.pop_back();
+
+    return r;
 }
 
-Result Function::DoCompute(int indent) const {
+Result Function::DoCompute(std::vector<int>& indent_stack, int indent) const {
+    indent_stack.push_back(indent);
+
     std::deque<Result> results;
     for (const auto& arg : args)
-        results.push_back(arg->Compute(indent + 1));
+        results.push_back(arg->Compute(indent_stack, indent + 1));
 
     switch (results.size()) {
     case 1:
         results.front().ApplyFunction(token.value);
-        return results.front();
+        break;
 
     case 2:
         results[0].ApplyFunction(token.value, results[1]);
-        return results[0];
+        break;
+
+    default:
+        throw Exception("No known function takes " + std::to_string(results.size()) +
+                        " arguments");
     }
-    throw Exception("No known function takes " + std::to_string(results.size()) +
-                    " arguments");
+
+    DCHECK(!indent_stack.empty());
+    DCHECK_EQ(indent_stack.back(), indent);
+    indent_stack.pop_back();
+
+    return results.front();
 }
 
 }  // namespace ast
