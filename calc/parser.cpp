@@ -172,11 +172,9 @@ std::unique_ptr<ast::Node> Term(Context<I>& ctx) {
 
         // Unary ops
         case Token::Minus:
-        case Token::Not: {
-            const auto op = ctx.ConsumeUnaryOp();
-            ast = std::make_unique<ast::UnaryOp>(op, Term(ctx));
+        case Token::Not:
+            ast = std::make_unique<ast::UnaryOp>(ctx.ConsumeUnaryOp(), Term(ctx));
             break;
-        }
 
         // A sub-expression with parens: ( .... )
         case Token::LParen:

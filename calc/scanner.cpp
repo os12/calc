@@ -367,7 +367,7 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         break;
     }
 
-	// Deal with cases where we started scanning a number but found no valid chars.
+    // Deal with cases where we started scanning a number but found no valid chars.
     if (number.empty() || number == ".") {
         if (it != buf_.end())
             throw Exception("Malformed base/" + std::to_string(base) +
@@ -376,7 +376,7 @@ bool Buffer::VariableSizedToken(bool eof, Token* t) {
         return false;
     }
 
-	// Deal with hex chars as we can produce a better message.
+    // Deal with hex chars as we can produce a better message.
     if (base == 10) {
         if (ContainsHexChars(number) && !IsValidFloat(number))
             throw Exception("Malformed base/10 integer: " + number);
