@@ -94,6 +94,7 @@ struct OutControl {
         text_control->line_wrapped(true);
         text_control->editable(false);
         text_control->enable_caret();
+        text_control->text_align(nana::align::right);
         nana::API::eat_tabstop(*text_control, false);
 
         control = std::move(text_control);
