@@ -70,7 +70,10 @@ inline std::ostream& operator<<(std::ostream& s, const Result& r) {
 namespace ast {
 
 //
-// These structures comprise the Abstract Syntax Tree that is built during parsing.
+// These structures comprise the Abstract Syntax Tree that is built during parsing. The
+// specic Node types exist yet there is no AST manipulation here. So, they are hidden
+// inside parser.cpp. The callers only care about result computation which happens via the
+// single public function: Compute().
 //
 
 // The base node. Provides the public function Compute().
@@ -83,58 +86,6 @@ struct Node {
 protected:
     virtual Result DoCompute(std::vector<int>& indent_stack, int indent) const = 0;
     virtual std::string Print() const = 0;
-};
-
-// Terminal: represents a single terminal such as a number or a symbolic constant.
-struct Terminal : Node {
-    Terminal(Result value) : value(std::move(value)) {}
-
-    const Result value;
-
-protected:
-    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
-    std::string Print() const override { return "Terminal: " + value.ToString(); };
-};
-
-// BinaryOp: represents a binary operator such as "*" or "<<".
-struct BinaryOp : Node {
-    BinaryOp(detail::Operator op,
-             std::unique_ptr<Node> left_ast,
-             std::unique_ptr<Node> right_ast)
-        : op(op), left_ast(std::move(left_ast)), right_ast(std::move(right_ast)) {}
-
-    const detail::Operator op;
-    const std::unique_ptr<Node> left_ast, right_ast;
-
-protected:
-    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
-    std::string Print() const override { return "BinaryOp: " + ToString(op); };
-};
-
-// UnaryUp: represents a unary operator such as "-".
-struct UnaryOp : Node {
-    UnaryOp(detail::Operator op, std::unique_ptr<Node> arg_ast)
-        : op(op), arg_ast(std::move(arg_ast)) {}
-
-    const detail::Operator op;
-    const std::unique_ptr<Node> arg_ast;
-
-protected:
-    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
-    std::string Print() const override { return "UnaryOp: " + ToString(op); };
-};
-
-// Function: represents a unary/binary function such as "sin", "abs", etc.
-struct Function : Node {
-    Function(Token token, std::list<std::unique_ptr<Node>> args)
-        : token(token), args(move(args)) {}
-
-    const Token token;
-    const std::list<std::unique_ptr<Node>> args;
-
-protected:
-    Result DoCompute(std::vector<int>& indent_stack, int indent) const override;
-    std::string Print() const override { return "Function: " + token.value; };
 };
 
 }  // namespace ast
