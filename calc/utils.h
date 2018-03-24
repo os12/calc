@@ -5,7 +5,12 @@
 namespace utils {
 
 // Takes a line (without the EoL marker) and dumps it to the Windows' debug output stream.
-void OutputDebugLine(const std::string& line);
+inline void OutputDebugLine(const std::string &line) {
+#if defined(_DEBUG)
+    OutputDebugStringA(line.c_str());
+    OutputDebugStringA("\n");
+#endif
+}
 
 // Floating point equality function adapted from:
 //  http://floating-point-gui.de/errors/comparison/

@@ -82,9 +82,6 @@
     <ClCompile Include="big\Prime.cpp">
       <Filter>Code\big</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>Code</Filter>
     </ClCompile>
