@@ -4,7 +4,7 @@ Standard: Cpp11
 ColumnLimit: 90
 IndentWidth: 4
 DerivePointerAlignment : false
-PointerAlignment: Left
+PointerAlignment: Right
 BinPackArguments: false
 BinPackParameters: false
 #AllowShortBlocksOnASingleLine: false
