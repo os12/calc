@@ -355,7 +355,7 @@ Result BinaryOp::DoCompute(std::vector<int>& indent_stack, int indent) const {
     }
 
     if (!lresult.Valid())
-        throw Exception("Binary operator " + ToString(op) + " yields no result");
+        throw Exception("Binary operator '" + ToString(op) + "' yields no result");
 
     return lresult;
 }

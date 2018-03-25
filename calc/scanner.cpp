@@ -271,7 +271,6 @@ bool Buffer::FetchQueued(bool eof, Token* t) {
         buf_.erase(buf_.begin(), buf_.begin() + 1);
         return true;
 
-
     // Start a two-character token: <<, >>
     case '<':
     case '>':
