@@ -167,6 +167,12 @@ private:
 
 }  // namespace detail
 
+// The Parser (and the Scanner) throw this object when the input is invalid.
+class Exception : public std::runtime_error {
+public:
+    Exception(std::string msg) : runtime_error(msg) {}
+};
+
 // On-demand scanner backed by a STL-style range. The point here is to read tokens on
 // demand.
 //
