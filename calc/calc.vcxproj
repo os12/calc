@@ -60,19 +60,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(SolutionDir)nlohmann\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)_$(Configuration)\obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(SolutionDir)nlohmann\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)_$(Configuration)\obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release shared|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)nana\include;$(SolutionDir)glog\src\windows;$(SolutionDir)nlohmann\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)_$(Configuration)\obj\$(ProjectName)\</IntDir>
   </PropertyGroup>

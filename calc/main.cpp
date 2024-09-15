@@ -4,6 +4,9 @@
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/textbox.hpp>
 #include <nana/gui/widgets/label.hpp>
+#include <fstream>
+#include <filesystem>
+#include <nlohmann/json.hpp>
 
 #include "parser.h"
 #include "utils.h"
@@ -11,14 +14,63 @@
 
 namespace {
 
+const std::string SETTINGS = "calc.ini";
+
+struct Position {
+    int x, y;
+    unsigned int width, height;
+} g_mainWindowPos{};
+
+void SaveWindowLocation(const Position &wpos) {
+    std::ofstream os(SETTINGS, std::ios_base::trunc);
+    if (!os.is_open()) {
+        utils::OutputDebugLine("Failed to open calc.ini");
+        return;
+    }
+
+    nlohmann::json json;
+    json["window"] = nlohmann::json::object();
+    json["window"]["x"] = wpos.x;
+    json["window"]["y"] = wpos.y;
+    json["window"]["height"] = wpos.height;
+    json["window"]["width"] = wpos.width;
+
+    os << json.dump();
+}
+
+bool LoadWindowPosition(Position &wpos) {
+    if (!std::filesystem::exists(SETTINGS))
+        return false;
+
+    std::ifstream is(SETTINGS);
+    if (!is.is_open()) {
+        utils::OutputDebugLine("Failed to open calc.ini");
+        return false;
+    }
+
+    try {
+        auto json = nlohmann::json::parse(is);
+
+        wpos.x = json["window"]["x"];
+        wpos.y = json["window"]["y"];
+        wpos.width = json["window"]["width"];
+        wpos.height = json["window"]["height"];
+
+        return true;
+    } catch (std::exception &e) {
+        utils::OutputDebugLine("Error: " + std::string(e.what()));
+        return false;
+    }
+}
+
+
 template <typename T>
-std::string Parse(std::string input, T& out_controls) {
+std::string Parse(std::string input, T &out_controls) {
     auto result = parser::Compute(input);
     if (!result.Valid())
         return "No valid result could be computed.";
 
-    for (auto& entry : out_controls)
-        entry.second.control->caption("");
+    for (auto &entry : out_controls) entry.second.control->caption("");
 
     auto get_control = [&out_controls](const char* name) -> nana::widget& {
         return *out_controls.find(name)->second.control;
@@ -224,7 +276,30 @@ int __stdcall WinMain(
     layout.collocate();
 
     form.caption("Calc!");
-    form.size({400, 220});
+
+    // Load the last position from file or set to some conservative default
+    if (!LoadWindowPosition(g_mainWindowPos)) {
+        g_mainWindowPos.width = 400;
+        g_mainWindowPos.height = 220;
+        g_mainWindowPos.x = 100;
+        g_mainWindowPos.y = 100;
+    }
+
+    // Set size and position
+    form.size({g_mainWindowPos.width, g_mainWindowPos.height});
+    form.move({g_mainWindowPos.x, g_mainWindowPos.y});
+
+    form.events().resized([](nana::arg_resized event) {
+        g_mainWindowPos.width = event.width;
+        g_mainWindowPos.height = event.height;
+        SaveWindowLocation(g_mainWindowPos);
+    });
+    form.events().move([](nana::arg_move event) {
+        g_mainWindowPos.x = event.x;
+        g_mainWindowPos.y = event.y;
+        SaveWindowLocation(g_mainWindowPos);
+    });
+
     nana::API::track_window_size(form, form.size(), false);
     form.icon(nana::paint::image(exe_path));
     form.show();
